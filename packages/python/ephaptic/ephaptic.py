@@ -171,6 +171,7 @@ class Ephaptic:
                     call_id = data.get('id')
                     func_name = data.get('name')
                     args = data.get('args', [])
+                    kwargs = data.get('kwargs', {}) # Note: Only Python client (currently) sends these, JS client does not.
 
                     if func_name in self._exposed_functions:
                         target_func = self._exposed_functions[func_name]
@@ -178,7 +179,7 @@ class Ephaptic:
                         token_user = _active_user_ctx.set(current_uid)
 
                         try:
-                            result = await self._async(target_func)(*args)
+                            result = await self._async(target_func)(*args, **kwargs)
                             await transport.send(msgpack.dumps({"id": call_id, "result": result}))
                         except Exception as e:
                             await transport.send(msgpack.dumps({"id": call_id, "error": str(e)}))
