@@ -19,8 +19,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install build twine
     - name: Build package
+      working-directory: ./packages/python
       run: python -m build
     - name: Publish to PyPI
+      working-directory: ./packages/python
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}

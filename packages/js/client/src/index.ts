@@ -30,6 +30,14 @@ export interface EphapticOptions {
      * Example: "ws://localhost:8000/_ephaptic"
      */
     url?: string;
+
+    /**
+     * An auth object you can provide to the server to verify who you are.
+     * The server receives this object directly in the identity loader.
+     * Example: `auth: { token: window.localStorage.getItem('jwtToken') }`
+     * Note: This object must be msgpack serializable.
+     */
+    auth?: any;
 }
 
 /**
@@ -99,7 +107,11 @@ class EphapticClientBase extends EventTarget {
         });
 
         this.ws.onopen = () => {
-            this.ws?.send(encode({ type: 'init' }));
+            const payload: Record<string, any> = { type: 'init' };
+            if (this.options?.auth) {
+                payload.auth = this.options.auth;
+            }
+            this.ws?.send(encode(payload));
             this.dispatchEvent(new CustomEvent('connected'));
         }
 

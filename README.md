@@ -37,8 +37,60 @@ Nah, just kidding. It's an RPC framework.
 What are  you waiting for? **Let's go.**
 
 <details>
-    <summary>Python (server)</summary>
-    <!-- TODO: Add documentation -->
+    <summary>Python</summary>
+    
+#### Client:
+
+```
+pip install ephaptic
+```
+
+#### Server:
+
+```
+pip install ephaptic[server]
+```
+
+```python
+from fastapi import FastAPI # or `from quart import Quart`
+from ephaptic import Ephaptic
+
+app = FastAPI() # or `app = Quart(__name__)`
+
+ephaptic = Ephaptic.from_app(app) # Finds which framework you're using, and creates an ephaptic server.
+```
+
+You can also specify a custom path:
+
+```python
+ephaptic = Ephaptic.from_app(app, path="/websocket")
+```
+
+And you can even use Redis for horizontal scaling!
+
+```python
+ephaptic = Ephaptic.from_app(app, redis_url="redis://my-redis-container:6379/0")
+```
+
+Now, how do you expose your function to the frontend?
+
+```python
+@ephaptic.expose
+async def add(num1, num2):
+    return num1 + num2
+```
+
+Yep, it's really that simple.
+
+But what if your code throws an error? No sweat, it just throws up on the frontend with the same details.
+
+And, want to say something to the frontend?
+
+```python
+await ephaptic.to(user1, user2).notification("Hello, world!", priority="high")
+```
+
+
 </details>
 
 <details>
@@ -66,6 +118,12 @@ const client = connect({ url: '/ws' });
 
 ```typescript
 const client = connect({ url: 'wss://my-backend.deployment/ephaptic' });
+```
+
+You can even send auth objects to the server for identity loading.
+
+```typescript
+const client = connect({ url: '...', auth: { token: window.localStorage.getItem('jwtToken') } })
 ```
 
 #### Or, to use in your browser:
