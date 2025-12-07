@@ -8,7 +8,8 @@
 <br>
 ephaptic
 <br>
-<a href="https://github.com/ephaptic/ephaptic/blob/main/LICENSE"><img alt="GitHub License" src="https://img.shields.io/github/license/ephaptic/ephaptic"></a>
+<a href="https://github.com/ephaptic/ephaptic/blob/main/LICENSE"><img alt="GitHub License" src="https://img.shields.io/github/license/ephaptic/ephaptic?style=for-the-badge&labelColor=%23222222"></a> <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/ephaptic/ephaptic/publish-js.yml?style=for-the-badge&label=NPM%20Build%20Status&labelColor=%23222222"> <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/ephaptic/ephaptic/publish-python.yml?style=for-the-badge&label=PyPI%20Build%20Status&labelColor=%23222222">
+
 
 </div>
 
