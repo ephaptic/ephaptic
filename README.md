@@ -1,12 +1,12 @@
 <div align="center">
     <a href="https://github.com/ephaptic/ephaptic">
         <picture>
-            <img src="https://raw.githubusercontent.com/ephaptic/ephaptic/refs/heads/main/.github/assets/logo.png" alt="ephaptic logo" height="128">
-            <!-- <img src="https://avatars.githubusercontent.com/u/248199226?s=128" alt="ephaptic logo" height="128> -->
+            <img src="https://raw.githubusercontent.com/ephaptic/ephaptic/refs/heads/main/.github/assets/logo.png" alt="ephaptic logo" height="200">
+            <!-- <img src="https://avatars.githubusercontent.com/u/248199226?s=256" alt="ephaptic logo" height="200> -->
         </picture>
     </a>
 <br>
-ephaptic
+<h1>ephaptic</h1>
 <br>
 <a href="https://github.com/ephaptic/ephaptic/blob/main/LICENSE"><img alt="GitHub License" src="https://img.shields.io/github/license/ephaptic/ephaptic?style=for-the-badge&labelColor=%23222222"></a> <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/ephaptic/ephaptic/publish-js.yml?style=for-the-badge&label=NPM%20Build%20Status&labelColor=%23222222"> <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/ephaptic/ephaptic/publish-python.yml?style=for-the-badge&label=PyPI%20Build%20Status&labelColor=%23222222">
 
