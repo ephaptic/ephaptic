@@ -84,6 +84,14 @@ class EphapticClientBase extends EventTarget {
         return `${protocol}//${window.location.host}/_ephaptic`;
     }
 
+    _sendInit() {
+        const payload: Record<string, any> = { type: 'init' };
+        if (this.options?.auth) {
+            payload.auth = this.options.auth;
+        }
+        this.ws?.send(encode(payload));
+    }
+
     connect(): void {
         if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) return;
 
@@ -92,12 +100,14 @@ class EphapticClientBase extends EventTarget {
 
         this._connectionPromise = new Promise(resolve => {
             if (this.ws?.readyState === WebSocket.OPEN) {
+                this._sendInit();
                 resolve();
             } else {
                 const finish = () => {
                     this.ws?.removeEventListener('open', finish);
                     this.ws?.removeEventListener('close', finish);
                     this.ws?.removeEventListener('error', finish);
+                    if (this.ws?.readyState === WebSocket.OPEN) this._sendInit();
                     resolve();
                 }
                 this.ws?.addEventListener('open', finish);
@@ -106,14 +116,7 @@ class EphapticClientBase extends EventTarget {
             }
         });
 
-        this.ws.onopen = () => {
-            const payload: Record<string, any> = { type: 'init' };
-            if (this.options?.auth) {
-                payload.auth = this.options.auth;
-            }
-            this.ws?.send(encode(payload));
-            this.dispatchEvent(new CustomEvent('connected'));
-        }
+        this.ws.onopen = () => { this.dispatchEvent(new CustomEvent('connected')); }
 
         this.ws.onmessage = event => {
             const data = decode(event.data);
