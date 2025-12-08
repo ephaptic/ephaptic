@@ -109,6 +109,8 @@ class Ephaptic:
                 adapter = FastAPIAdapter(instance, app, path, manager)
             case _:
                 raise TypeError(f"Unsupported app type: {module}")
+            
+        return instance
 
             
     def expose(self, func: Callable):
