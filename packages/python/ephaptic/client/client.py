@@ -3,7 +3,7 @@ import msgpack
 import websockets
 import logging
 
-from typing import Callable, Any
+from typing import Callable, Any, Optional
 import inspect
 
 class EphapticClient:
@@ -67,21 +67,29 @@ class EphapticClient:
         except Exception as e:
             logging.error(f"Connection error: {e}")
 
-    def on(self, event_name, func):
-        if event_name not in self._event_handlers: self._event_handlers[event_name] = set()
-        self._event_handlers[event_name].add(func)
+    def on(self, event_name, func: Optional[Callable] = None):
+        def decorator(f):
+            if event_name not in self._event_handlers: self._event_handlers[event_name] = set()
+            self._event_handlers[event_name].add(func)
+            return f
+        
+        return decorator(func) if func else decorator
 
-    def off(self, event_name, func):
+    def off(self, event_name, func: Callable):
         if event_name not in self._event_handlers: return
         s = self._event_handlers[event_name]
         s.discard(func)
         if not s: del self._event_handlers[event_name]
 
-    def once(self, event_name, func):
-        async def wrapper(*args, **kwargs):
-            self.off(event_name, wrapper)
-            func(*args, **kwargs)
-        self.on(event_name, wrapper)
+    def once(self, event_name, func: Optional[Callable] = None):
+        def decorator(f):
+            async def wrapper(*args, **kwargs):
+                self.off(event_name, wrapper)
+                func(*args, **kwargs)
+            self.on(event_name, wrapper)
+            return f
+        
+        return decorator(func) if func else decorator
 
     def __getattr__(self, name):
         async def remote_call(*args, **kwargs):
