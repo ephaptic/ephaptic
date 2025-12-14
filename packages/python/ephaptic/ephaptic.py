@@ -1,12 +1,14 @@
 import asyncio
 import msgpack
 import redis.asyncio as redis
+import pydantic
 
 from contextvars import ContextVar
 from .localproxy import LocalProxy
 
 from .transports import Transport
 
+import typing
 from typing import Optional, Callable, Any, List, Set, Dict
 import inspect
 
@@ -91,12 +93,11 @@ class Ephaptic:
 
     @classmethod
     def from_app(cls, app, path="/_ephaptic", redis_url=None):
-        # `app` could be Flask, Quart, FastAPI, etc.
+        # `app` could be ~Flask~, Quart, FastAPI, etc.
         instance = cls()
 
         if redis_url:
             manager.init_redis(redis_url)
-            # TODO: framework-specific hooks for the background listener.
 
         module = app.__class__.__module__.split(".")[0]
 
@@ -177,11 +178,41 @@ class Ephaptic:
 
                     if func_name in self._exposed_functions:
                         target_func = self._exposed_functions[func_name]
+                        sig = inspect.signature(target_func)
+                        try:
+                            bound = sig.bind(*args, **kwargs)
+                            bound.apply_defaults()
+                        except TypeError as e:
+                            await transport.send(msgpack.dumps({"id": call_id, "error": str(e)}))
+                            continue
+
+                        hints = typing.get_type_hints(target_func)
+
+                        errors = []
+
+                        for name, val in bound.arguments.items():
+                            hint = hints.get(name)
+
+                            if hint and inspect.isclass(hint) and issubclass(hint, pydantic.BaseModel):
+                                try:
+                                    bound.arguments[name] = hint.model_validate(val)
+                                except pydantic.ValidationError as e:
+                                    errors.extend(e.errors())
+
+                        if errors:
+                            await transport.send(msgpack.dumps({
+                                "id": call_id,
+                                "error": errors,
+                            }))
+                            continue
+
                         token_transport = _active_transport_ctx.set(transport)
                         token_user = _active_user_ctx.set(current_uid)
 
                         try:
-                            result = await self._async(target_func)(*args, **kwargs)
+                            result = await self._async(target_func)(**bound.arguments)
+                            if isinstance(result, pydantic.BaseModel):
+                                result = result.model_dump()
                             await transport.send(msgpack.dumps({"id": call_id, "result": result}))
                         except Exception as e:
                             await transport.send(msgpack.dumps({"id": call_id, "error": str(e)}))
