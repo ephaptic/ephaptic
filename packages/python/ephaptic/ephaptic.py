@@ -78,7 +78,7 @@ class EphapticTarget:
             await manager.broadcast(self.user_ids, name, list(args), dict(kwargs))
         return emitter
     
-def expose(self, func: Callable):
+def expose(func: Callable):
     _EXPOSED_FUNCTIONS[func.__name__] = func
     return func
 
