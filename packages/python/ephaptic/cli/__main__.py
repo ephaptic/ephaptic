@@ -9,6 +9,10 @@ from ephaptic import Ephaptic
 app = typer.Typer(help="Ephaptic CLI tool.")
 
 def load_ephaptic(import_name: str) -> Ephaptic:
+    try:
+        from dotenv import load_dotenv; load_dotenv()
+    except: ...
+
     sys.path.insert(0, os.getcwd())
 
     if ":" not in import_name:
