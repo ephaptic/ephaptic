@@ -19,8 +19,6 @@
 </a>
 
 
-
-
 </div>
 
 ## What is `ephaptic`?
@@ -34,7 +32,7 @@
 
 Nah, just kidding. It's an RPC framework.
 
-> **ephaptic** — Call your backend straight from your frontend. No JSON. No latency. No middleware.
+> **ephaptic** — Call your backend straight from your frontend. No JSON. Low latency. Invisible middleware.
 
 ## Getting Started
 
@@ -44,7 +42,9 @@ Nah, just kidding. It's an RPC framework.
 
 - Oh, and the client can also listen to events broadcasted by the server. No, like literally. You just need to add an `eventListener`. Did I mention? Events can be sent to specific targets, specific users - not just anyone online.
 
-What are  you waiting for? **Let's go.**
+- Saved the best for last: it's type-safe. Don't believe me? Try it out for yourself. Simply type hint return values and parameters on the backend, and watch those very Python types transform into interfaces and types on the TypeScript frontend. Plus, you can use Pydantic - which means, for those of you who are FastAPI users, this is going to be great.
+
+What are you waiting for? **Let's go.**
 
 <details>
     <summary>Python</summary>
@@ -86,13 +86,13 @@ Now, how do you expose your function to the frontend?
 
 ```python
 @ephaptic.expose
-async def add(num1, num2):
+async def add(num1: int, num2: int) -> int:
     return num1 + num2
 ```
 
 Yep, it's really that simple.
 
-But what if your code throws an error? No sweat, it just throws up on the frontend with the same details.
+But what if your code throws an error? No sweat, it just throws up on the frontend, with the error name.
 
 And, want to say something to the frontend?
 
@@ -100,6 +100,13 @@ And, want to say something to the frontend?
 await ephaptic.to(user1, user2).notification("Hello, world!", priority="high")
 ```
 
+To create a schema of your RPC endpoints:
+
+```
+$ ephaptic src.app:app -o schema.json
+```
+
+Pydantic is entirely supported. It's validated for arguments, it's auto-serialized when you return a pydantic model, and your models receive type definitions in the schema.
 
 </details>
 
@@ -109,7 +116,7 @@ await ephaptic.to(user1, user2).notification("Hello, world!", priority="high")
 #### To use with a framework / Vite:
 
 ```
-npm install @ephaptic/client
+$ npm install @ephaptic/client
 ```
 
 Then:
@@ -136,13 +143,28 @@ You can even send auth objects to the server for identity loading.
 const client = connect({ url: '...', auth: { token: window.localStorage.getItem('jwtToken') } })
 ```
 
+And you can load types, too.
+
+```
+$ npm i --save-dev @ephaptic/type-gen
+$ npx @ephaptic/type-gen ./schema.json -o schema.d.ts
+```
+
+```typescript
+import { connect } from "@ephaptic/client";
+import { type EphapticService } from './schema';
+
+const client = connect(...) as unknown as EphapticService;
+```
+
+
 #### Or, to use in your browser:
 
 ```html
 <script type="module">
 import { connect } from 'https://cdn.jsdelivr.net/npm/@ephaptic/client@latest/+esm';
 
-const client = connect();
+const client = connect(...);
 </script>
 ```
 
