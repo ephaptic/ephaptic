@@ -178,7 +178,7 @@ function generate() {
         `/**`,
         ` * Usage:`,
         ` * import { connect } from '@ephaptic/client';`,
-        ` * import { EphapticService } from './ephaptic';`,
+        ` * import { type EphapticService } from './ephaptic';`,
         ` * `,
         ` * const client = connect(...) as unknown as EphapticService;`,
         ` */`,
