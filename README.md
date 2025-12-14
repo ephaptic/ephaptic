@@ -90,6 +90,9 @@ async def add(num1: int, num2: int) -> int:
     return num1 + num2
 ```
 
+> [!TIP]
+> If you're experiencing circular imports, feel free to instead import and use the `expose` function from the library instead of the instance.
+
 Yep, it's really that simple.
 
 But what if your code throws an error? No sweat, it just throws up on the frontend, with the error name.

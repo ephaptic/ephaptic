@@ -67,6 +67,8 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+_EXPOSED_FUNCTIONS = {}
+
 class EphapticTarget:
     def __init__(self, user_ids: list[str]):
         self.user_ids = user_ids
@@ -76,6 +78,10 @@ class EphapticTarget:
             await manager.broadcast(self.user_ids, name, list(args), dict(kwargs))
         return emitter
     
+def expose(self, func: Callable):
+    _EXPOSED_FUNCTIONS[func.__name__] = func
+    return func
+
 class Ephaptic:
     _exposed_functions: Dict[str, Callable] = {}
     _identity_loader: Optional[Callable] = None
@@ -111,6 +117,8 @@ class Ephaptic:
             case _:
                 raise TypeError(f"Unsupported app type: {module}")
             
+        cls._exposed_functions = _EXPOSED_FUNCTIONS.copy()
+
         return instance
 
             
