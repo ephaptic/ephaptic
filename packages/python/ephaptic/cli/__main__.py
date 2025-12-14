@@ -40,6 +40,19 @@ def load_ephaptic(import_name: str) -> Ephaptic:
     
     return instance
 
+def create_schema(adapter: TypeAdapter, definitions: dict) -> dict:
+    schema = adapter.json_schema(ref_template='#/definitions/{model}')
+
+    if '$defs' in schema:
+        definitions.update(schema.pop('$defs'))
+
+    if schema.get('type') == 'object' and 'title' in schema:
+        model = schema['title']
+        definitions[model] = schema
+        return { '$ref': f'#/definitions/{model}' }
+    
+    return schema
+
 @app.command()
 def generate(
     app: str = typer.Argument('app:app', help="The import string. (Default: `app:app`)"),
@@ -53,8 +66,6 @@ def generate(
         "methods": {},
         "definitions": {},
     }
-
-    collected = []
 
     for name, func in ephaptic._exposed_functions.items():
         typer.secho(f"  - {name}")
@@ -70,22 +81,19 @@ def generate(
         for param_name in sig.parameters:
             hint = hints.get(param_name, typing.Any)
             adapter = TypeAdapter(hint)
-            schema = adapter.json_schema(ref_template='#/definitions/{model}')
 
-            if '$defs' in schema:
-                schema_output["definitions"].update(schema.pop("$defs"))
-
-            method_schema["args"][param_name] = schema
+            method_schema["args"][param_name] = create_schema(
+                adapter,
+                schema_output["definitions"],
+            )
 
         return_hint = hints.get("return", typing.Any)
         if return_hint is not type(None):
             adapter = TypeAdapter(return_hint)
-            schema = adapter.json_schema(ref_template='#/definitions/{model}')
-
-            if '$defs' in schema:
-                schema_output["definitions"].update(schema.pop("$defs"))
-
-            method_schema["return"] = schema
+            method_schema["return"] = create_schema(
+                adapter,
+                schema_output["definitions"],
+            )
 
         schema_output["methods"][name] = method_schema
 
