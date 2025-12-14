@@ -28,4 +28,4 @@ Repository = "https://github.com/ephaptic/ephaptic"
 "Issue Tracker" = "https://github.com/ephaptic/ephaptic/issues"
 
 [project.scripts]
-ephaptic = "ephaptic.cli"
+ephaptic = "ephaptic.cli:app"
