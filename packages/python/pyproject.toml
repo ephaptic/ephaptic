@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ephaptic"
-version = "0.2.0a2"
+version = "0.2.0a3"
 authors = [
     { name="uukelele", email="robustrobot11@gmail.com" },
 ]

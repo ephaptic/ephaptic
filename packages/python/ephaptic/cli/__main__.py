@@ -90,7 +90,7 @@ def generate(
     with open(output, "w") as f:
         json.dump(schema_output, f, indent=2)
 
-    typer.secho("Schema generated to `{output}`", fg=typer.colors.GREEN, bold=True)
+    typer.secho(f"Schema generated to `{output}`.", fg=typer.colors.GREEN, bold=True)
 
 if __name__ == "__main__":
     app()
