@@ -68,6 +68,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 _EXPOSED_FUNCTIONS = {}
+_IDENTITY_LOADER: Optional[Callable] = None
 
 class EphapticTarget:
     def __init__(self, user_ids: list[str]):
@@ -80,6 +81,10 @@ class EphapticTarget:
     
 def expose(func: Callable):
     _EXPOSED_FUNCTIONS[func.__name__] = func
+    return func
+    
+def identity_loader(func: Callable):
+    _IDENTITY_LOADER = func
     return func
 
 class Ephaptic:
@@ -118,6 +123,7 @@ class Ephaptic:
                 raise TypeError(f"Unsupported app type: {module}")
             
         cls._exposed_functions = _EXPOSED_FUNCTIONS.copy()
+        cls._identity_loader = _IDENTITY_LOADER
 
         return instance
 
