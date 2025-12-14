@@ -67,15 +67,15 @@ def generate(
             "return": None
         }
 
-        for name in sig.parameters:
-            hint = hints.get(name, typing.Any)
+        for param_name in sig.parameters:
+            hint = hints.get(param_name, typing.Any)
             adapter = TypeAdapter(hint)
             schema = adapter.json_schema(ref_template='#/definitions/{model}')
 
             if '$defs' in schema:
                 schema_output["definitions"].update(schema.pop("$defs"))
 
-            method_schema["args"][name] = schema
+            method_schema["args"][param_name] = schema
 
         return_hint = hints.get("return", typing.Any)
         if return_hint is not type(None):
@@ -84,6 +84,8 @@ def generate(
 
             if '$defs' in schema:
                 schema_output["definitions"].update(schema.pop("$defs"))
+
+            method_schema["return"] = schema
 
         schema_output["methods"][name] = method_schema
 
