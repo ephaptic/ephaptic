@@ -90,8 +90,7 @@ async def add(num1: int, num2: int) -> int:
     return num1 + num2
 ```
 
-> [!TIP]
-> If you're experiencing circular imports, feel free to instead import and use the `expose` function from the library instead of the instance. Please note that if you do this, you must define all exposed functions *before* creating the ephaptic instance - this is mainly for people importing RPC functions from another file. The same thing can be done with the global `identity_loader` decorator.
+###### If you're trying to expose functions statelessly, e.g. in a different file, feel free to instead import and use the `expose` function from the library instead of the instance. Please note that if you do this, you must define all exposed functions *before* creating the ephaptic instance - easily done by simply placing your import line above the ephaptic constructor. The same thing can be done with the global `identity_loader` decorator.
 
 Yep, it's really that simple.
 
