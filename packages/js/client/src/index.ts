@@ -1,9 +1,41 @@
 import { encode, decode } from "@msgpack/msgpack";
 
+interface PydanticErrorDetail {
+    loc: (string | number)[];
+    msg: string;
+    type: string;
+    input: any;
+}
+
+interface RpcError {
+    code: string;
+    message: string;
+    data?: any;
+}
+
+class EphapticError extends Error {
+    code: string;
+    data?: any;
+
+    constructor(code: string, message: string, data?: any) {
+        super(message);
+        this.name = "EphapticError";
+        this.code = code;
+        this.data = data;
+
+        Object.setPrototypeOf(this, EphapticError.prototype);
+    }
+}
+
+interface ValidationError extends RpcError {
+    code: 'VALIDATION_ERRROR';
+    data: PydanticErrorDetail[];
+}
+
 interface RpcResponse {
     id: number,
     result?: any,
-    error?: string,
+    error?: string | RpcError,
 }
 
 interface ServerEvent {
@@ -27,6 +59,11 @@ function isRpcResponse(data: any): data is RpcResponse {
 
 function isServerEvent(data: any): data is ServerEvent {
     return data && typeof data === 'object' && data.type === 'event';
+}
+
+function createError(rpcError: string | RpcError) {
+    if (typeof rpcError === 'string') return new Error(rpcError);
+    return new EphapticError(rpcError.code, rpcError.message, rpcError.data)
 }
 
 export interface EphapticOptions {
@@ -143,7 +180,7 @@ class EphapticClientBase extends EventTarget {
                     if (handlers) {
                         const { resolve, reject, timer } = handlers;
                         clearTimeout(timer);
-                        if (data.error) reject(new Error(data.error));
+                        if (data.error) reject(createError(data.error));
                         else resolve(data.result);
                         this.pendingCalls.delete(data.id);
                     }
@@ -235,8 +272,11 @@ export function connect(options?: EphapticOptions) {
             if (prop in target) return target[prop];
 
             return async(...args: any[]) => {
-                if (!target.ws) target.connect();
-                if (target.ws.readyState >= 2) await new Promise(r => target.ws.addEventListener('open', r, { once: true }));
+                if (!target.ws || target.ws.readyState !== WebSocket.OPEN) {
+                    target.connect();
+                    await new Promise(r => target.addEventListener('connected', r, { once: true }));
+                }
+
                 if (target._connectionPromise) await target._connectionPromise;
                 return new Promise((resolve, reject) => {
                     const id = ++target.callId;

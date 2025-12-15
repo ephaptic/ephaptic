@@ -192,7 +192,7 @@ class Ephaptic:
 
                     if func_name in self._exposed_functions:
                         target_func = self._exposed_functions[func_name]
-                        sig = inspect.signature(target_func)
+                        sig = inspect.signature(target_func)                      
                         try:
                             bound = sig.bind(*args, **kwargs)
                             bound.apply_defaults()
@@ -201,6 +201,8 @@ class Ephaptic:
                             continue
 
                         hints = typing.get_type_hints(target_func)
+
+                        return_type = hints.get("return", typing.Any)
 
                         errors = []
 
@@ -216,7 +218,11 @@ class Ephaptic:
                         if errors:
                             await transport.send(msgpack.dumps({
                                 "id": call_id,
-                                "error": errors,
+                                "error": {
+                                    "code": "VALIDATION_ERROR",
+                                    "message": "Validation failed.",
+                                    "data": errors,
+                                },
                             }))
                             continue
 
@@ -225,9 +231,15 @@ class Ephaptic:
 
                         try:
                             result = await self._async(target_func)(**bound.arguments)
-                            if isinstance(result, pydantic.BaseModel):
+                            if inspect.isclass(return_type) and issubclass(return_type, pydantic.BaseModel):
+                                result = (return_type.model_validate(result)).model_dump()
+                            elif isinstance(result, pydantic.BaseModel):
                                 result = result.model_dump()
                             await transport.send(msgpack.dumps({"id": call_id, "result": result}))
+                        # except pydantic.ValidationError as e:
+                            # Should we really treat this separately?
+                            # For input it's understandable, but for server responses it feels like a server issue.
+                            # Ok, let's treat this like any other server error.
                         except Exception as e:
                             await transport.send(msgpack.dumps({"id": call_id, "error": str(e)}))
                         finally:
