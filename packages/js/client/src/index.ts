@@ -195,6 +195,8 @@ class EphapticClientBase extends EventTarget {
         this.ws.onclose = () => {
             this._connectionPromise = null;
 
+            this.dispatchEvent(new CustomEvent('disconnected'));
+
             const baseDelay = 1000;
             const maxDelay = 30000;
             // min(max, base * 2^retries)
@@ -274,7 +276,18 @@ export function connect(options?: EphapticOptions) {
             return async(...args: any[]) => {
                 if (!target.ws || target.ws.readyState !== WebSocket.OPEN) {
                     target.connect();
-                    await new Promise(r => target.addEventListener('connected', r, { once: true }));
+                    await new Promise<void>((resolve, reject) => {
+                        const onSuccess = () => { cleanup(); resolve(); };
+                        const onError = () => { cleanup(); reject(new Error("Failed to establish connection.")); };
+
+                        const cleanup = () => {
+                            target.removeEventListener('connected', onSuccess);
+                            target.removeEventListener('disconnected', onError);
+                        };
+
+                        target.addEventListener('connected', onSuccess, { once: true });
+                        target.addEventListener('disconnected', onError);
+                    });
                 }
 
                 if (target._connectionPromise) await target._connectionPromise;
