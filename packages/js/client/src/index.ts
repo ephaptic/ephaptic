@@ -28,7 +28,7 @@ class EphapticError extends Error {
 }
 
 interface ValidationError extends RpcError {
-    code: 'VALIDATION_ERRROR';
+    code: 'VALIDATION_ERROR';
     data: PydanticErrorDetail[];
 }
 
