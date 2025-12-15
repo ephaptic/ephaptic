@@ -231,10 +231,16 @@ class Ephaptic:
 
                         try:
                             result = await self._async(target_func)(**bound.arguments)
-                            if inspect.isclass(return_type) and issubclass(return_type, pydantic.BaseModel):
-                                result = (return_type.model_validate(result)).model_dump()
+
+                            if return_type is not inspect.Signature.empty:
+                                try:
+                                    adapter = pydantic.TypeAdapter(return_type)
+                                    validated = adapter.validate_python(result, from_attributes=True)
+                                    result = adapter.dump_python(validated, mode='json')
+                                except: ...
                             elif isinstance(result, pydantic.BaseModel):
-                                result = result.model_dump()
+                                result = result.model_dump(mode='json')
+
                             await transport.send(msgpack.dumps({"id": call_id, "result": result}))
                         # except pydantic.ValidationError as e:
                             # Should we really treat this separately?
