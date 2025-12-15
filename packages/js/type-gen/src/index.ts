@@ -68,15 +68,28 @@ interface EphapticSchema {
     definitions: Record<string, JsonSchema>;
 }
 
+function keyName(key: string): string {
+    if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key)) return key;
+    else return JSON.stringify(key);
+}
+
+function validate(name: string): string {
+    if (!/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name)) {
+        console.warn(`[warning] '${name}' is not a valid TypeScript identifier. sanitizing...`);
+        return name.replace(/[^a-zA-Z0-9_$]/g, '_');
+    }
+    return name;
+}
+
 function resolveType(schema: JsonSchema): string {
     if (!schema) return 'any';
 
     if (schema.$ref) {
-        return schema.$ref.split('/').pop() || 'any';
+        return validate(schema.$ref.split('/').pop() || 'any');
     }
 
     if (schema.enum) {
-        return schema.enum?.map(val => typeof val === 'string' ? `"${val}"` : val).join(` | `);
+        return schema.enum?.map(val => JSON.stringify(val)).join(` | `);
     }
 
     if (schema.anyOf) {
@@ -100,8 +113,7 @@ function resolveType(schema: JsonSchema): string {
         if (!schema.properties) return 'Record<string, any>';
         
         const props = Object.entries(schema.properties).map(([key, propSchema]) => {
-            const isRequired = schema.required?.includes(key);
-            return `${key}${isRequired ? '' : '?'}: ${resolveType(propSchema)}`;
+            return `${keyName(key)}${schema.required?.includes(key) ? '' : '?'}: ${resolveType(propSchema)}`;
         });
         return `{ ${props.join('; ')} }`;
     }
@@ -138,13 +150,13 @@ function generate() {
         ``,
     ])
 
-    for (const [name, schema] of Object.entries(data.definitions)) {
+    for (let [name, schema] of Object.entries(data.definitions)) {
+        name = validate(name);
         if (schema.type === 'object') {
             lines.push(`export interface ${name} {`);
             if (schema.properties) {
                 for (const [propName, propSchema] of Object.entries(schema.properties)) {
-                    const isRequired = schema?.required?.includes(propName);
-                    lines.push(`    ${propName}${isRequired ? '' : '?'}: ${resolveType(propSchema)};`);
+                    lines.push(`    ${keyName(propName)}${schema?.required?.includes(propName) ? '' : '?'}: ${resolveType(propSchema)};`);
                 }
             }
             lines.push(`}`);
@@ -163,12 +175,12 @@ function generate() {
         const args: string[] = [];
 
         for (const [argName, argSchema] of Object.entries(methodData.args)) {
-            args.push(`${argName}: ${resolveType(argSchema)}`);
+            args.push(`${validate(argName)}: ${resolveType(argSchema)}`);
         }
 
         const returnType = methodData.return ? resolveType(methodData.return) : 'void';
 
-        lines.push(`    ${methodName}(${args.join(', ')}): Promise<${returnType}>;`);
+        lines.push(`    ${validate(methodName)}(${args.join(', ')}): Promise<${returnType}>;`);
     }
 
     lines.push(`}`);
