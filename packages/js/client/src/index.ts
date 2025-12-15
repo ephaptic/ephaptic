@@ -15,6 +15,12 @@ interface ServerEvent {
     };
 }
 
+interface PendingCall {
+    resolve: (value: any) => void;
+    reject: (reason?: any) => void;
+    timer: ReturnType<typeof setTimeout>;
+}
+
 function isRpcResponse(data: any): data is RpcResponse {
     return data && typeof data === 'object' && 'id' in data && ('result' in data || 'error' in data);
 }
@@ -38,6 +44,12 @@ export interface EphapticOptions {
      * Note: This object must be msgpack serializable.
      */
     auth?: any;
+
+    /**
+     * Timeout (ms) to wait before rejecting with a TimeoutError.
+     * Default: 30000ms.
+     */
+    timeout?: number;
 }
 
 /**
@@ -51,9 +63,10 @@ class EphapticClientBase extends EventTarget {
     options?: EphapticOptions;
     ws?: WebSocket;
     callId: Number = 0;
-    pendingCalls: Map<number, { resolve: (value: any) => void, reject: (reason?: any) => void }> = new Map();
+    pendingCalls: Map<number, PendingCall> = new Map();
     _emitter: Map<string, Set<Function>> = new Map();
     _connectionPromise?: Promise<void> | null;
+    retryCount: number = 0;
 
     constructor(options: EphapticOptions = {}) {
         super();
@@ -116,7 +129,10 @@ class EphapticClientBase extends EventTarget {
             }
         });
 
-        this.ws.onopen = () => { this.dispatchEvent(new CustomEvent('connected')); }
+        this.ws.onopen = () => {
+            this.retryCount = 0;
+            this.dispatchEvent(new CustomEvent('connected'));
+        }
 
         this.ws.onmessage = event => {
             const data = decode(event.data);
@@ -125,7 +141,8 @@ class EphapticClientBase extends EventTarget {
                 if (this.pendingCalls.has(data.id)) {
                     const handlers = this.pendingCalls.get(data.id);
                     if (handlers) {
-                        const { resolve, reject } = handlers;
+                        const { resolve, reject, timer } = handlers;
+                        clearTimeout(timer);
                         if (data.error) reject(new Error(data.error));
                         else resolve(data.result);
                         this.pendingCalls.delete(data.id);
@@ -140,7 +157,17 @@ class EphapticClientBase extends EventTarget {
 
         this.ws.onclose = () => {
             this._connectionPromise = null;
-            setTimeout(() => this.connect(), 3000);
+
+            const baseDelay = 1000;
+            const maxDelay = 30000;
+            // min(max, base * 2^retries)
+            let delay = Math.min(maxDelay, baseDelay * Math.pow(2, this.retryCount)) + Math.random() * 1000;
+
+            console.warn(`[ephaptic] connection lost. reconnecting in ${Math.round(delay)}ms...`);
+
+            this.retryCount++;
+
+            setTimeout(() => this.connect(), delay);
         }
     }
 
@@ -209,11 +236,25 @@ export function connect(options?: EphapticOptions) {
 
             return async(...args: any[]) => {
                 if (!target.ws) target.connect();
+                if (target.ws.readyState >= 2) await new Promise(r => target.ws.addEventListener('open', r, { once: true }));
                 if (target._connectionPromise) await target._connectionPromise;
                 return new Promise((resolve, reject) => {
                     const id = ++target.callId;
-                    target.pendingCalls.set(id, { resolve, reject });
-                    target.ws.send(encode({ type: 'rpc', id, name: prop, args }));
+                    const timeoutDuration = target.options?.timeout || 30000;
+                    const timer = setTimeout(() => {
+                        if (target.pendingCalls.has(id)) {
+                            target.pendingCalls.delete(id);
+                            reject(new Error(`${prop} timed out; exceeded ${timeoutDuration}ms.`));
+                        }
+                    }, timeoutDuration);
+                    target.pendingCalls.set(id, { resolve, reject, timer });
+                    try {
+                        target.ws.send(encode({ type: 'rpc', id, name: prop, args }));
+                    } catch (err) {
+                        clearTimeout(timer);
+                        target.pendingCalls.delete(id);
+                        reject(err);
+                    }
                 })
             }
         }
