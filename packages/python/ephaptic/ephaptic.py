@@ -51,9 +51,12 @@ class ConnectionManager:
         for user_id in user_ids:
             if user_id in self.active:
                 for transport in list(self.active[user_id]):
-                    try:
-                        await transport.send(payload)
-                    except: pass
+                    asyncio.create_task(self._safe_send(transport, payload))
+
+    async def _safe_send(self, transport: Transport, payload: bytes):
+        try:
+            await transport.send(payload)
+        except: ...
 
     async def start_redis(self):
         if not self.redis: return
