@@ -105,15 +105,30 @@ await ephaptic.to(user1, user2).notification("Hello, world!", priority="high")
 To create a schema of your RPC endpoints:
 
 ```
-$ ephaptic src.app:app -o schema.json
+$ ephaptic src.app:app -o schema.json # --watch to run in background and auto-reload on file change.
 ```
 
 Pydantic is entirely supported. It's validated for arguments, it's auto-serialized when you return a pydantic model, and your models receive type definitions in the schema.
 
+To receive authentication objects and handle them:
+
+```python
+from ephaptic import identity_loader
+
+@identity_loader
+async def load_identity(auth): # You can use synchronous functions here too.
+    jwt = auth.get("token")
+    if not jwt: return None # unauthorized
+    ... # app logic to retrieve user ID
+    return user_id
+```
+
+From here, you can use `ephaptic.active_user` within any exposed function, and it will give you the current active user ID / whatever else your identity loading function returns. (This is also how `ephaptic.to` works.)
+
 </details>
 
 <details>
-    <summary>JavaScript/TypeScript — Browser (Svelt, React, Angular, Vite, etc.)</summary>
+    <summary>JavaScript/TypeScript — Browser (Svelte, React, Angular, Vite, etc.)</summary>
 
 #### To use with a framework / Vite:
 
@@ -149,7 +164,7 @@ And you can load types, too.
 
 ```
 $ npm i --save-dev @ephaptic/type-gen
-$ npx @ephaptic/type-gen ./schema.json -o schema.d.ts
+$ npx @ephaptic/type-gen ./schema.json -o schema.d.ts # --watch to auto-reload upon changes
 ```
 
 ```typescript
@@ -169,8 +184,6 @@ import { connect } from 'https://cdn.jsdelivr.net/npm/@ephaptic/client@latest/+e
 const client = connect(...);
 </script>
 ```
-
-<!-- TODO: Add extended documentation -->
 
 </details>
 
