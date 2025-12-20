@@ -16,8 +16,8 @@ def load_ephaptic(import_name: str) -> Ephaptic:
     sys.path.insert(0, os.getcwd())
 
     if ":" not in import_name:
-        typer.secho(f"Warning: Import name did not specify app name. Defaulting to `app`.", fg=typer.colors.YELLOW)
-        import_name += ":app" # default: expect app to be named `app` inside the file
+        typer.secho(f"Warning: Import name did not specify client name. Defaulting to `client`.", fg=typer.colors.YELLOW)
+        import_name += ":client" # default: expect client to be named `client` inside the file
 
     module_name, var_name = import_name.split(":", 1)
 
@@ -35,7 +35,7 @@ def load_ephaptic(import_name: str) -> Ephaptic:
         raise typer.Exit(1)
     
     if not isinstance(instance, Ephaptic):
-        typer.secho(f"Error: '{var_name}' is not an Ephaptic instance. It is type: {type(instance)}", fg=typer.colors.RED)
+        typer.secho(f"Error: '{var_name}' is not an Ephaptic client. It is type: {type(instance)}", fg=typer.colors.RED)
         raise typer.Exit(1)
     
     return instance
@@ -55,10 +55,10 @@ def create_schema(adapter: TypeAdapter, definitions: dict) -> dict:
 
 @app.command()
 def generate(
-    app: str = typer.Argument('app:app', help="The import string. (Default: `app:app`)"),
+    client: str = typer.Argument('client:client', help="The import string for the Ephaptic client."),
     output: Path = typer.Option('schema.json', '--output', '-o', help="Output path for the JSON schema.")
 ):
-    ephaptic = load_ephaptic(app)
+    ephaptic = load_ephaptic(client)
 
     typer.secho(f"Found {len(ephaptic._exposed_functions)} functions.", fg=typer.colors.GREEN)
 
