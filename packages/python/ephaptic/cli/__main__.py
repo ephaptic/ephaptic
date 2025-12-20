@@ -1,4 +1,4 @@
-import sys, os, json, inspect, importlib, typing, typer
+import sys, os, json, inspect, importlib, typing, typer, subprocess as sp
 
 from pathlib import Path
 from pydantic import TypeAdapter
@@ -53,11 +53,30 @@ def create_schema(adapter: TypeAdapter, definitions: dict) -> dict:
     
     return schema
 
+def run_subprocess():
+    cmd = [sys.executable]
+    cmd += [arg for arg in sys.argv if arg not in {'--watch', '-w'}]
+    sp.run(cmd)
+
 @app.command()
 def generate(
     client: str = typer.Argument('client:client', help="The import string for the Ephaptic client."),
-    output: Path = typer.Option('schema.json', '--output', '-o', help="Output path for the JSON schema.")
+    output: Path = typer.Option('schema.json', '--output', '-o', help="Output path for the JSON schema."),
+    watch: bool = typer.Option(False, '--watch', '-w', help="Watch for changes in `.py` files and regenerate schema file automatically."),
 ):
+    if watch:
+        import watchfiles
+        
+        cwd = os.getcwd()
+        typer.secho(f"Watching for changes ({cwd})...",  fg=typer.colors.GREEN)
+
+        run_subprocess()
+
+        for changes in watchfiles.watch(cwd):
+            if any(f.endswith('.py') for _, f in changes):
+                typer.secho("Detected changes, regenerating...")
+                run_subprocess()
+
     ephaptic = load_ephaptic(client)
 
     typer.secho(f"Found {len(ephaptic._exposed_functions)} functions.", fg=typer.colors.GREEN)
@@ -97,8 +116,15 @@ def generate(
 
         schema_output["methods"][name] = method_schema
 
+    new = json.dumps(schema_output, indent=2)
+
+    if output.exists():
+        old = output.read_text()
+        if old == new:
+            return
+
     with open(output, "w") as f:
-        json.dump(schema_output, f, indent=2)
+        f.write(new)
 
     typer.secho(f"Schema generated to `{output}`.", fg=typer.colors.GREEN, bold=True)
 

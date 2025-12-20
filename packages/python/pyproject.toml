@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ephaptic"
-version = "0.2.2"
+version = "0.2.3"
 authors = [
     { name="uukelele", email="robustrobot11@gmail.com" },
 ]
@@ -19,6 +19,7 @@ dependencies = [
     "pydantic>=2.0",
     "typer[standard]>=0.20.0",
     "python-dotenv",
+    "watchfiles",
 ]
 
 [project.optional-dependencies]
