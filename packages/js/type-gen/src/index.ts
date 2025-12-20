@@ -11,8 +11,9 @@ Usage: npx @ephaptic/type-gen <schema.json> [options]
 
 Options:
   -o, --output <file>    Output file path (default: ephaptic.d.ts)
+  -w, --watch            Watch input files for changes
   --help                 Show this help message
-`);
+`); // tempted to use leftpad here lmao
 }
 
 if (args.includes('--help')) {
@@ -22,6 +23,7 @@ if (args.includes('--help')) {
 
 let inputPath = args[0];
 let outputPath = 'ephaptic.d.ts';
+let watchMode = false;
 
 for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -34,6 +36,8 @@ for (let i = 0; i < args.length; i++) {
             console.error("Error: --output flag requires a file path.");
             process.exit(1);
         }
+    } else if (arg === '-w' || arg === '--watch') {
+        watchMode = true;
     } else if (arg.startsWith('-') && arg !== '-') {
         console.error(`Error: Unknown option '${arg}'`);
         printUsage();
@@ -131,13 +135,22 @@ function generate() {
 
         if (!fs.existsSync(fullPath)) {
             console.error(`Error: File not found: ${fullPath}`);
-            process.exit(1);
+            if (watchMode) return;
+            else process.exit(1);
         }
 
         raw = fs.readFileSync(fullPath, 'utf-8');
     }
 
-    const data: EphapticSchema = JSON.parse(raw);
+    let data: EphapticSchema;
+    try {
+        data = JSON.parse(raw);
+    } catch (err) {
+        console.error(`Error parsing JSON schema.`, err);
+        if (watchMode) return;
+        else process.exit(1);
+    }
+
 
     const lines: string[] = [];
 
@@ -203,4 +216,35 @@ function generate() {
     console.log(`TypeScript definitions generated at: '${outputPath}'.`)
 }
 
-generate();
+if (watchMode) {
+    if (inputPath === '-') {
+        console.error("Error: Cannot use --watch when input is stdin.");
+        process.exit(1);
+    }
+
+    console.log(`Watching ${inputPath} for changes...`);
+
+    generate();
+
+    const fp = path.resolve(process.cwd(), inputPath);
+
+    let wait: NodeJS.Timeout | null = null;
+
+    try {
+        fs.watch(fp, (event, filename) => {
+            if (filename) {
+                if (wait) return;
+                wait = setTimeout(() => {
+                    wait = null;
+                    console.log(`Change detected, regenerating types...`);
+                    generate();
+                }, 100);
+            }
+        });
+        
+        setInterval(() => {}, 1000 * 60 * 60);
+        
+    } catch (err) {
+        console.error(`Error starting watcher:`, err);
+    }
+} else generate();
