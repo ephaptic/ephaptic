@@ -96,10 +96,10 @@ export interface EphapticOptions {
  */
 export type PortalCallback = (...args: any[]) => void;
 
-class EphapticClientBase extends EventTarget {
+export class EphapticClientBase extends EventTarget {
     options?: EphapticOptions;
     ws?: WebSocket;
-    callId: Number = 0;
+    callId: number = 0;
     pendingCalls: Map<number, PendingCall> = new Map();
     _emitter: Map<string, Set<Function>> = new Map();
     _connectionPromise?: Promise<void> | null;
