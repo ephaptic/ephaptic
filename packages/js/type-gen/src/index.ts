@@ -162,6 +162,8 @@ function generate() {
         ``,
         `import { type EphapticClientBase } from '@ephaptic/client';`,
         ``,
+        `export type EphapticQuery<TArgs extends any[], TReturn> = { queryKey: [string, ...TArgs]; queryFn: () => Promise<TReturn>; }`,
+        ``,
         `// --- Interfaces ---`,
         ``,
     ])
@@ -198,6 +200,29 @@ function generate() {
 
         lines.push(`    ${validate(methodName)}(${args.join(', ')}): Promise<${returnType}>;`);
     }
+
+    lines.push(``);
+    lines.push(`    queries: {`);
+
+    if (data.methods) {
+        for (const [methodName, methodData] of Object.entries(data.methods)) {
+            const args: string[] = [];
+            const argTypes: string[] = [];
+
+            if (methodData.args) {
+                for (const [argName, argSchema] of Object.entries(methodData.args)) {
+                    args.push(`${validate(argName)}: ${resolveType(argSchema)}`);
+                    argTypes.push(resolveType(argSchema));
+                }
+            }
+
+            const returnType = methodData.return ? resolveType(methodData.return) : 'void';
+
+            lines.push(`        ${validate(methodName)}(${args.join(', ')}): EphapticQuery<[${argTypes.join(', ')}], ${returnType}>;`);
+        }
+    }
+
+    lines.push(`    };`)
 
     lines.push(`}`);
     lines.push(``);

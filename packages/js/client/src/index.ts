@@ -96,6 +96,17 @@ export interface EphapticOptions {
  */
 export type PortalCallback = (...args: any[]) => void;
 
+function createQueryProxy(client: any) {
+    return new Proxy({}, {
+        get(_target, prop: string) {
+            return (...args: any[]) => ({
+                queryKey: [prop, ...args],
+                queryFn: () => client[prop](...args)
+            });
+        }
+    });
+}
+
 export class EphapticClientBase extends EventTarget {
     options?: EphapticOptions;
     ws?: WebSocket;
@@ -271,6 +282,10 @@ export function connect(options?: EphapticOptions) {
 
     const clientProxy = new Proxy(clientInstance, {
         get(target: any, prop: string) {
+            if (prop === 'queries') {
+                if (!target._queriesProxy) target._queriesProxy = createQueryProxy(clientProxy);
+                return target._queriesProxy;
+            }
             if (prop in target) return target[prop];
 
             return async(...args: any[]) => {
