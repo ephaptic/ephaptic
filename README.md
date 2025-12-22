@@ -49,16 +49,16 @@ What are you waiting for? **Let's go.**
 <details>
     <summary>Python</summary>
     
-#### Client:
+<h4>Client:</h4>
 
 ```
-pip install ephaptic
+$ pip install ephaptic
 ```
 
-#### Server:
+<h4>Server:</h4>
 
 ```
-pip install ephaptic[server]
+$ pip install ephaptic[server]
 ```
 
 ```python
@@ -90,7 +90,7 @@ async def add(num1: int, num2: int) -> int:
     return num1 + num2
 ```
 
-###### If you're trying to expose functions statelessly, e.g. in a different file, feel free to instead import and use the `expose` function from the library instead of the instance. Please note that if you do this, you must define all exposed functions *before* creating the ephaptic instance - easily done by simply placing your import line above the ephaptic constructor. The same thing can be done with the global `identity_loader` decorator.
+<h5>If you're trying to expose functions statelessly, e.g. in a different file, feel free to instead import and use the <code>expose</code> function from the library instead of the instance. Please note that if you do this, you must define all exposed functions <i>before</i> creating the ephaptic instance - easily done by simply placing your import line above the ephaptic constructor. The same thing can be done with the global <code>identity_loader</code> decorator.</h5>
 
 Yep, it's really that simple.
 
@@ -123,14 +123,14 @@ async def load_identity(auth): # You can use synchronous functions here too.
     return user_id
 ```
 
-From here, you can use `ephaptic.active_user` within any exposed function, and it will give you the current active user ID / whatever else your identity loading function returns. (This is also how `ephaptic.to` works.)
+From here, you can use <code>ephaptic.active_user</code> within any exposed function, and it will give you the current active user ID / whatever else your identity loading function returns. (This is also how <code>ephaptic.to</code> works.)
 
 </details>
 
 <details>
     <summary>JavaScript/TypeScript — Browser (Svelte, React, Angular, Vite, etc.)</summary>
 
-#### To use with a framework / Vite:
+<h4>To use with a framework / Vite:</h4>
 
 ```
 $ npm install @ephaptic/client
@@ -175,7 +175,7 @@ const client = connect(...) as unknown as EphapticService;
 ```
 
 
-#### Or, to use in your browser:
+<h4>Or, to use in your browser:</h4>
 
 ```html
 <script type="module">
@@ -186,6 +186,8 @@ const client = connect(...);
 ```
 
 </details>
+
+See more in the [docs](https://ephaptic.github.io/ephaptic/tutorial).
 
 ## [License](https://github.com/ephaptic/ephaptic/blob/main/LICENSE)
 
