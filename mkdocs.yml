@@ -68,6 +68,7 @@ nav:
     - Authentication: tutorial/security.md
   - Advanced User Guide:
     - Deployment: advanced/deployment.md
+    - TanStack Query Integration: advanced/tanstack.md
 
 extra_css:
   - stylesheets/extra.css
