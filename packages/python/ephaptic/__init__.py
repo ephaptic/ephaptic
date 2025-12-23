@@ -3,6 +3,7 @@ from .ephaptic import (
     active_user,
     expose,
     identity_loader,
+    event,
 )
 
 from .client import (
