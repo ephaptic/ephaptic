@@ -269,7 +269,9 @@ Now, we can finally use the client.
 
     This allows you to revert to `const client = connect();` (without arguments), as the browser will correctly infer the host and port relative to the current page.
 
-    Alternatively, if your backend and your frontend are on different hosts, you can specify it: `connect({ url: 'wss://my-backend.app/_ephaptic' })`
+    Alternatively, if your backend and your frontend are on different hosts, you can specify it: `connect({ url: 'wss://my-backend.app/_ephaptic' })`.
+
+    Learn more in the [Deployment](../advanced/deployment.md) section.
 
 !!! tip
     Notice that if you try to pass a string like `client.add("2", 3)`, your editor will scream at you. That's the power of **ephaptic**.
