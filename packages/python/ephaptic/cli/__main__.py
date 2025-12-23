@@ -79,13 +79,13 @@ def generate(
 
     ephaptic = load_ephaptic(client)
 
-    typer.secho(f"Found {len(ephaptic._exposed_functions)} functions.", fg=typer.colors.GREEN)
-
     schema_output = {
         "methods": {},
         "events": {},
         "definitions": {},
     }
+
+    typer.secho(f"Found {len(ephaptic._exposed_functions)} functions.", fg=typer.colors.GREEN)
 
     for name, func in ephaptic._exposed_functions.items():
         typer.secho(f"  - {name}")
@@ -116,6 +116,8 @@ def generate(
             )
 
         schema_output["methods"][name] = method_schema
+
+    typer.secho(f"Found {len(ephaptic._exposed_events)} events.", fg=typer.colors.GREEN)
 
     for name, model in ephaptic._exposed_events.items():
         typer.secho(f"  - {name}")
