@@ -63,6 +63,18 @@ Schema generated to `schema.json`.
 
 Now, let's build the frontend app that will run this.
 
+!!! tip
+    ephaptic is framework independent. You don't have to use React or Svelte - any framework/library will work!
+    You can even do it in native JS with the CDN:
+    ```html
+    <script type="module">
+        import { connect } from 'https://cdn.jsdelivr.net/npm/@ephaptic/client/+esm';
+
+        const client = connect();
+    </script>
+    ```
+    Just be aware that if you opt for native browser JS, you won't receive type support (JavaScript does not support types.)
+
 === "React"
 
     <div class="termy">
