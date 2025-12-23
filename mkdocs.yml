@@ -66,6 +66,7 @@ nav:
     - First Steps: tutorial/first-steps.md
     - Parameters & Pydantic: tutorial/parameters.md
     - Authentication: tutorial/security.md
+    - Events: tutorial/events.md
   - Advanced User Guide:
     - Deployment: advanced/deployment.md
     - TanStack Query Integration: advanced/tanstack.md

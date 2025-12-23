@@ -204,3 +204,4 @@ To fix this, let's render conditionally, and also add a loading message.
 
 !!! tip
     You may also wish to use a proper state handler, like TanStack Query, to clean up this process.
+    We have first-class support for TanStack Query. See [the advanced section](../advanced/tanstack.md) for details.
