@@ -69,6 +69,7 @@ interface JsonSchema {
 
 interface EphapticSchema {
     methods: Record<string, { args: Record<string, JsonSchema>, return: JsonSchema | null }>;
+    events?: Record<string, JsonSchema>;
     definitions: Record<string, JsonSchema>;
 }
 
@@ -185,6 +186,15 @@ function generate() {
         }
     }
 
+    lines.push(`export interface EphapticEvents {`);
+    if (data.events) {
+        for (const [eventName, eventSchema] of Object.entries(data.events)) {
+            lines.push(`    ${validate(eventName)}: ${resolveType(eventSchema)};`);
+        }
+    }
+    lines.push(`}`);
+    lines.push(``);
+
     lines.push(`// --- Client Definition ---`);
     lines.push(``);
     lines.push(`export interface EphapticService extends EphapticClientBase {`);
@@ -223,6 +233,12 @@ function generate() {
     }
 
     lines.push(`    };`)
+
+    lines.push(``);
+
+    lines.push(`    on<K extends keyof EphapticEvents>(event: K, callback: (data: EphapticEvents[K]) => void): void;`);
+    lines.push(`    off<K extends keyof EphapticEvents>(event: K, callback: (data: EphapticEvents[K]) => void): void;`);
+    lines.push(`    once<K extends keyof EphapticEvents>(event: K, callback: (data: EphapticEvents[K]) => void): void;`);
 
     lines.push(`}`);
     lines.push(``);

@@ -83,6 +83,7 @@ def generate(
 
     schema_output = {
         "methods": {},
+        "events": {},
         "definitions": {},
     }
 
@@ -115,6 +116,15 @@ def generate(
             )
 
         schema_output["methods"][name] = method_schema
+
+    for name, model in ephaptic._exposed_events.items():
+        typer.secho(f"  - {name}")
+        adapter = TypeAdapter(model)
+
+        schema_output["events"][name] = create_schema(
+            adapter,
+            schema_output["definitions"],
+        )
 
     new = json.dumps(schema_output, indent=2)
 

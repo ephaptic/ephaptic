@@ -1,4 +1,5 @@
 import asyncio
+from warnings import deprecated
 import msgpack
 import redis.asyncio as redis
 import pydantic
@@ -71,11 +72,22 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 _EXPOSED_FUNCTIONS = {}
+_EXPOSED_EVENTS = {}
 _IDENTITY_LOADER: Optional[Callable] = None
 
 class EphapticTarget:
     def __init__(self, user_ids: list[str]):
         self.user_ids = user_ids
+
+    async def emit(self, event_instance: pydantic.BaseModel):
+        event_name = event_instance.__class__.__name__
+        payload = event_instance.model_dump(mode='json')
+        await manager.broadcast(
+            self.user_ids,
+            event_name,
+            args=[],
+            kwargs=payload,
+        )
 
     def __getattr__(self, name: str):
         async def emitter(*args, **kwargs):
@@ -90,8 +102,13 @@ def identity_loader(func: Callable):
     _IDENTITY_LOADER = func
     return func
 
+def event(model: typing.Type[pydantic.BaseModel]):
+    _EXPOSED_EVENTS[model.__name__] = model
+    return model
+
 class Ephaptic:
     _exposed_functions: Dict[str, Callable] = {}
+    _exposed_events: Dict[str, typing.Type[pydantic.BaseModel]]
     _identity_loader: Optional[Callable] = None
 
     def _async(self, func: Callable):
@@ -125,8 +142,9 @@ class Ephaptic:
             case _:
                 raise TypeError(f"Unsupported app type: {module}")
             
-        cls._exposed_functions = _EXPOSED_FUNCTIONS.copy()
-        cls._identity_loader = _IDENTITY_LOADER
+        instance._exposed_functions = _EXPOSED_FUNCTIONS.copy()
+        instance._exposed_events = _EXPOSED_EVENTS.copy()
+        instance._identity_loader = _IDENTITY_LOADER
 
         return instance
 
@@ -134,6 +152,10 @@ class Ephaptic:
     def expose(self, func: Callable):
         self._exposed_functions[func.__name__] = func
         return func
+    
+    def event(self, model: typing.Type[pydantic.BaseModel]):
+        self._exposed_events[model.__name__] = model
+        return model
     
     def identity_loader(self, func: Callable):
         self._identity_loader = func
@@ -147,6 +169,7 @@ class Ephaptic:
         return EphapticTarget(targets)
     
     def __getattr__(self, name: str):
+        @deprecated("Use `emit` and the new (typed) event system instead.")
         async def emitter(*args, **kwargs):
             transport: Transport = _active_transport_ctx.get()
             if not transport:
@@ -162,6 +185,24 @@ class Ephaptic:
             }))
         
         return emitter
+    
+    async def emit(self, event_instance: pydantic.BaseModel):
+        event_name = event_instance.__class__.__name__
+        payload = event_instance.model_dump(mode='json')
+        transport: Transport = _active_transport_ctx.get()
+        if not transport:
+            raise RuntimeError(
+                f".emit({event_name}) called outside RPC context."
+                f"Use .to(...).emit({event_name}) to broadcast from background tasks, to specific user(s)."
+            )
+        
+        # NOTE: There is slight duplication here and in the EphapticTarget. Perhaps make these functions internally route to EphapticTargets but pass the transport to use?
+        
+        await transport.send(msgpack.dumps({
+            'type': 'event',
+            'name': event_name,
+            'payload': {'args': [], 'kwargs': payload}
+        }))
     
     async def handle_transport(self, transport: Transport):
         current_uid = None
