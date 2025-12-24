@@ -95,14 +95,17 @@ class EphapticTarget:
         return emitter
     
 def expose(func: Callable):
+    global _EXPOSED_FUNCTIONS
     _EXPOSED_FUNCTIONS[func.__name__] = func
     return func
     
 def identity_loader(func: Callable):
+    global _IDENTITY_LOADER
     _IDENTITY_LOADER = func
     return func
 
 def event(model: typing.Type[pydantic.BaseModel]):
+    global _EXPOSED_EVENTS
     _EXPOSED_EVENTS[model.__name__] = model
     return model
 
