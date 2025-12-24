@@ -35,7 +35,8 @@ Let's use it.
 
         const client = connect() as unknown as EphapticService;
 
-        const todos = createQuery(client.queries.getTodos()); // You can also pass arguments, the same way you normally would.
+        // NOTE: Svelte Query v5 requires you to pass a function first, for reactivity.
+        const todos = createQuery(() => { client.queries.getTodos() }); // You can also pass arguments, the same way you normally would.
     </script>
 
     {#if $todos.isPending}
