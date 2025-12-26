@@ -223,7 +223,7 @@ function generate() {
 
             if (methodData.args) {
                 for (const [argName, argSchema] of Object.entries(methodData.args)) {
-                    const sep = methodData.required.includes(argName) ? ':' : '?:'l
+                    const sep = methodData.required.includes(argName) ? ':' : '?:';
                     args.push(`${validate(argName)}${sep} ${resolveType(argSchema)}`);
                     argTypes.push(resolveType(argSchema));
                 }
