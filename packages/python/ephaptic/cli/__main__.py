@@ -95,10 +95,11 @@ def generate(
 
         method_schema = {
             "args": {},
-            "return": None
+            "return": None,
+            "required": [],
         }
 
-        for param_name in sig.parameters:
+        for param_name, param in sig.parameters.items():
             hint = hints.get(param_name, typing.Any)
             adapter = TypeAdapter(hint)
 
@@ -106,6 +107,13 @@ def generate(
                 adapter,
                 schema_output["definitions"],
             )
+
+            if param.default == inspect.Parameter.empty:
+                method_schema["required"].append(param_name)
+            else:
+                method_schema["args"][param_name]["default"] = str(param.default)
+
+            
 
         return_hint = hints.get("return", typing.Any)
         if return_hint is not type(None):

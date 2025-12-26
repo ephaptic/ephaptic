@@ -60,6 +60,7 @@ interface JsonSchema {
     items?: JsonSchema;
     properties?: Record<string, JsonSchema>;
     required?: string[];
+    default?: string;
     anyOf?: JsonSchema[];
     allOf?: JsonSchema[];
     oneOf?: JsonSchema[];
@@ -68,7 +69,7 @@ interface JsonSchema {
 }
 
 interface EphapticSchema {
-    methods: Record<string, { args: Record<string, JsonSchema>, return: JsonSchema | null }>;
+    methods: Record<string, { args: Record<string, JsonSchema>, return: JsonSchema | null, required: string[] }>;
     events?: Record<string, JsonSchema>;
     definitions: Record<string, JsonSchema>;
 }
@@ -203,7 +204,8 @@ function generate() {
         const args: string[] = [];
 
         for (const [argName, argSchema] of Object.entries(methodData.args)) {
-            args.push(`${validate(argName)}: ${resolveType(argSchema)}`);
+            const sep = methodData.required.includes(argName) ? ':' : '?:';
+            args.push(`${validate(argName)}${sep} ${resolveType(argSchema)}`);
         }
 
         const returnType = methodData.return ? resolveType(methodData.return) : 'void';
@@ -221,7 +223,8 @@ function generate() {
 
             if (methodData.args) {
                 for (const [argName, argSchema] of Object.entries(methodData.args)) {
-                    args.push(`${validate(argName)}: ${resolveType(argSchema)}`);
+                    const sep = methodData.required.includes(argName) ? ':' : '?:'l
+                    args.push(`${validate(argName)}${sep} ${resolveType(argSchema)}`);
                     argTypes.push(resolveType(argSchema));
                 }
             }
