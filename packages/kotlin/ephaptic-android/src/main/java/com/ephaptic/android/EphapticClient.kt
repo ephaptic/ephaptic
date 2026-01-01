@@ -40,14 +40,14 @@ class EphapticClient(
     private var retryCount = 0
     private var isManuallyClosed = false
 
-    suspend inline fun <reified T> request(method: String, vararg args: Any): T {
+    suspend inline fun <reified T> request(method: String, vararg args: Any?): T {
         val rawResult = sendRawRpc(method, args.toList())
         val adapter = moshi.adapter(T::class.java)
         return adapter.fromJsonValue(rawResult) ?: throw EphapticException("PARSE_ERROR", "Received null for non-nullable type ${T::class.simpleName}")
     }
 
     @PublishedApi
-    internal suspend fun sendRawRpc(name: String, args: List<Any>): Any? {
+    internal suspend fun sendRawRpc(name: String, args: List<Any?>): Any? {
         ensureConnected()
 
         return withTimeout(timeoutMs) {

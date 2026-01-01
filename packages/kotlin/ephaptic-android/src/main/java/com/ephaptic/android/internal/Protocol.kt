@@ -9,7 +9,7 @@ internal data class RpcRequestFrame(
     val type: String = "rpc",
     val id: Int,
     val name: String,
-    val args: List<Any>
+    val args: List<Any?>
 )
 
 internal data class RpcResponseFrame(
