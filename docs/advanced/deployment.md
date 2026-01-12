@@ -174,3 +174,6 @@ $ docker compose up --build
 You may not notice anything, but now, each `uvicorn` worker knows which clients that they have connected, and they're able to talk to each other.
 
 This means, even in a distributed system with hundreds of nodes running the backend container, if they're all hooked up to one Redis instance, an event emitted by one node (`await ephaptic.to(user).emit(event)`) will always reach the node that the target user is connected to, which will then broadcast it to the frontend.
+
+!!! info
+    For more information on why this is required, and how it works, head to the [diagram](../diagram.md).
