@@ -1,5 +1,5 @@
 import asyncio
-from warnings import deprecated
+import warnings
 import msgpack
 import redis.asyncio as redis
 import pydantic
@@ -172,7 +172,12 @@ class Ephaptic:
         return EphapticTarget(targets)
     
     def __getattr__(self, name: str):
-        @deprecated("Use `emit` and the new (typed) event system instead.")
+        warnings.warn(
+            "Use `emit` and the new (typed) event system instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        # @deprecated("")
         async def emitter(*args, **kwargs):
             transport: Transport = _active_transport_ctx.get()
             if not transport:
