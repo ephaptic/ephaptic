@@ -24,6 +24,13 @@ dependencies = [
 
 [project.optional-dependencies]
 server = ["redis"]
+test = [
+    "pytest",
+    "pytest-asyncio",
+    "fastapi",
+    "uvicorn",
+    "httpx",
+]
 
 [project.urls]
 Homepage = "https://github.com/ephaptic/ephaptic"

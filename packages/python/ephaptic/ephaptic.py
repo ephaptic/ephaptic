@@ -245,6 +245,7 @@ class Ephaptic:
                     if func_name in self._exposed_functions:
                         target_func = self._exposed_functions[func_name]
                         sig = inspect.signature(target_func)                      
+                        
                         try:
                             bound = sig.bind(*args, **kwargs)
                             bound.apply_defaults()
@@ -252,52 +253,61 @@ class Ephaptic:
                             await transport.send(msgpack.dumps({"id": call_id, "error": str(e)}))
                             continue
 
-                        hints = typing.get_type_hints(target_func)
+                        annotations = typing.get_type_hints(target_func)
+                        fields = {}
+                        for name, param in sig.parameters.items():
+                            if name in annotations:
+                                fields[name] = (annotations[name], param.default if param.default is not inspect.Parameter.empty else ...)
+                            else:
+                                fields[name] = (Any, param.default if param.default is not inspect.Parameter.empty else ...)
 
-                        return_type = hints.get("return", typing.Any)
+                        DynamicInputModel = pydantic.create_model(f'DynamicInputModel_{func_name}', **fields)
 
-                        errors = []
-
-                        for name, val in bound.arguments.items():
-                            hint = hints.get(name)
-
-                            if hint and inspect.isclass(hint) and issubclass(hint, pydantic.BaseModel):
-                                try:
-                                    bound.arguments[name] = hint.model_validate(val)
-                                except pydantic.ValidationError as e:
-                                    errors.extend(e.errors())
-
-                        if errors:
+                        try:
+                            validated_data = DynamicInputModel(**bound.arguments)
+                            final_arguments = validated_data.model_dump()
+                        except pydantic.ValidationError as e:
                             await transport.send(msgpack.dumps({
                                 "id": call_id,
                                 "error": {
                                     "code": "VALIDATION_ERROR",
-                                    "message": "Validation failed.",
-                                    "data": errors,
+                                    "message": "Input validation failed.",
+                                    "data": e.errors(),
                                 },
                             }))
                             continue
-
+                        
                         token_transport = _active_transport_ctx.set(transport)
                         token_user = _active_user_ctx.set(current_uid)
 
                         try:
-                            result = await self._async(target_func)(**bound.arguments)
+                            result = await self._async(target_func)(**final_arguments)
 
-                            if return_type is not inspect.Signature.empty:
+                            return_type = typing.get_type_hints(target_func).get("return", typing.Any)
+                            if return_type is not inspect.Signature.empty and return_type is not typing.Any:
                                 try:
                                     adapter = pydantic.TypeAdapter(return_type)
                                     validated = adapter.validate_python(result, from_attributes=True)
                                     result = adapter.dump_python(validated, mode='json')
-                                except: ...
+                                except Exception as e:
+                                    # Should we really treat this separately?
+                                    # For input it's understandable, but for server responses it feels like a server issue.
+                                    # Let's just return a RETURN_VALIDATION_ERROR and print the traceback.
+                                    import traceback
+                                    traceback.print_exc()
+                                    await transport.send(msgpack.dumps({
+                                        "id": call_id,
+                                        "error": {
+                                            "code": "RETURN_VALIDATION_ERROR",
+                                            "message": f"Server returned invalid type: {e}",
+                                            "data": None,
+                                        },
+                                    }))
+                                    continue
                             elif isinstance(result, pydantic.BaseModel):
                                 result = result.model_dump(mode='json')
 
                             await transport.send(msgpack.dumps({"id": call_id, "result": result}))
-                        # except pydantic.ValidationError as e:
-                            # Should we really treat this separately?
-                            # For input it's understandable, but for server responses it feels like a server issue.
-                            # Ok, let's treat this like any other server error.
                         except Exception as e:
                             await transport.send(msgpack.dumps({"id": call_id, "error": str(e)}))
                         finally:
@@ -308,7 +318,7 @@ class Ephaptic:
                             "id": call_id, 
                             "error": f"Function '{func_name}' not found."
                         }))
-        except asyncio.CancelledError:
+        except (asyncio.CancelledError, Transport.ConnectionClosed):
             ...
         except Exception:
             import traceback
