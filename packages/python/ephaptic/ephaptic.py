@@ -3,11 +3,14 @@ import warnings
 import msgpack
 import redis.asyncio as redis
 import pydantic
+import time
 
 from contextvars import ContextVar
 from .localproxy import LocalProxy
 
 from .transports import Transport
+
+from .decorators import META_KEY, Expose, Event, IdentityLoader
 
 import typing
 from typing import Optional, Callable, Any, List, Set, Dict
@@ -19,6 +22,8 @@ _active_user_ctx = ContextVar('active_user', default=None)
 active_user = LocalProxy(_active_user_ctx.get)
 
 CHANNEL_NAME = "ephaptic:broadcast"
+
+F = typing.TypeVar('F', bound=Callable[..., Any])
 
 class ConnectionManager:
     def __init__(self):
@@ -75,6 +80,18 @@ _EXPOSED_FUNCTIONS = {}
 _EXPOSED_EVENTS = {}
 _IDENTITY_LOADER: Optional[Callable] = None
 
+_LOCAL_RATELIMIT_CACHE: Dict[str, List] = {} # [hits, expire_at]
+# if redis isn't set up, assume that this is the only instance [no 'multiple nodes'] so ratelimits can be stored in memory.
+# only used when Redis isn't set.
+_LAST_CACHE_CLEANUP = time.time() # for manual cleaning up of the cache
+
+class RatelimitExceededException(Exception):
+    retry_after: int
+
+    def __init__(self, message: str, retry_after: int):
+        super().__init__(message)
+        self.retry_after = retry_after
+
 class EphapticTarget:
     def __init__(self, user_ids: list[str]):
         self.user_ids = user_ids
@@ -94,25 +111,22 @@ class EphapticTarget:
             await manager.broadcast(self.user_ids, name, list(args), dict(kwargs))
         return emitter
     
-def expose(func: Callable):
-    global _EXPOSED_FUNCTIONS
-    _EXPOSED_FUNCTIONS[func.__name__] = func
-    return func
-    
-def identity_loader(func: Callable):
+def _set_identity_loader(f):
     global _IDENTITY_LOADER
-    _IDENTITY_LOADER = func
-    return func
+    _IDENTITY_LOADER = f
 
-def event(model: typing.Type[pydantic.BaseModel]):
-    global _EXPOSED_EVENTS
-    _EXPOSED_EVENTS[model.__name__] = model
-    return model
+expose = Expose(_EXPOSED_FUNCTIONS)
+event = Event(_EXPOSED_EVENTS)
+identity_loader = IdentityLoader(_set_identity_loader)
 
 class Ephaptic:
     _exposed_functions: Dict[str, Callable] = {}
     _exposed_events: Dict[str, typing.Type[pydantic.BaseModel]]
     _identity_loader: Optional[Callable] = None
+
+    expose: Expose
+    event: Event
+    identity_loader: IdentityLoader
 
     def _async(self, func: Callable):
         async def wrapper(*args, **kwargs) -> Any:
@@ -149,20 +163,47 @@ class Ephaptic:
         instance._exposed_events = _EXPOSED_EVENTS.copy()
         instance._identity_loader = _IDENTITY_LOADER
 
-        return instance
+        instance.expose = Expose(instance._exposed_functions)
+        instance.event = Event(instance._exposed_events)
+        instance.identity_loader = IdentityLoader(lambda f: setattr(instance, '_identity_loader', f))
 
-            
-    def expose(self, func: Callable):
-        self._exposed_functions[func.__name__] = func
-        return func
+        return instance
     
-    def event(self, model: typing.Type[pydantic.BaseModel]):
-        self._exposed_events[model.__name__] = model
-        return model
-    
-    def identity_loader(self, func: Callable):
-        self._identity_loader = func
-        return func
+    async def _check_ratelimit(self, func_name: str, limit: tuple[int, int], uid: str = None, ip: str = None):
+        max_reqs, window = limit
+        identifier = f'u:{uid}' if uid else f'ip:{ip}'
+        now = time.time()
+        current_window = int(now // window)
+        reset = (current_window + 1) * window
+        key = f'ephaptic:rl:{func_name}:{identifier}:{current_window}'
+
+        if manager.redis:
+            pipe = manager.redis.pipeline()
+            pipe.incr(key)
+            pipe.expire(key, window + 1)
+            results = await pipe.execute()
+            hits = results[0]
+        else:
+            global _LAST_CACHE_CLEANUP
+            if (now - _LAST_CACHE_CLEANUP) > 60:
+                for k in [
+                    k for k, v in _LOCAL_RATELIMIT_CACHE.items()
+                    if v[1] < now
+                ]: del _LOCAL_RATELIMIT_CACHE[k]
+                _LAST_CACHE_CLEANUP = now
+
+            entry = _LOCAL_RATELIMIT_CACHE.get(key)
+            if not entry:
+                entry = [0, reset]
+                _LOCAL_RATELIMIT_CACHE[key] = entry
+
+            entry[0] += 1
+            hits = entry[0]
+
+        if hits > max_reqs:
+            retry_after = max(1, int(reset - now))
+            raise RatelimitExceededException(f'Rate Limit exceeded. Try again in {retry_after} seconds.', retry_after=retry_after)
+
     
     def to(self, *args):
         targets = []
@@ -170,30 +211,7 @@ class Ephaptic:
             if isinstance(arg, list): targets.extend(arg)
             else: targets.append(arg)
         return EphapticTarget(targets)
-    
-    def __getattr__(self, name: str):
-        warnings.warn(
-            "Use `emit` and the new (typed) event system instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        # @deprecated("")
-        async def emitter(*args, **kwargs):
-            transport: Transport = _active_transport_ctx.get()
-            if not transport:
-                raise RuntimeError(
-                    f".{name}() called outside RPC context."
-                    f"Use .to(...).{name}() to broadcast from background tasks, to specific user(s)."
-                )
-            
-            await transport.send(msgpack.dumps({
-                "type": "event",
-                "name": name,
-                "payload": {"args": list(args), "kwargs": dict(kwargs)},
-            }))
-        
-        return emitter
-    
+       
     async def emit(self, event_instance: pydantic.BaseModel):
         event_name = event_instance.__class__.__name__
         payload = event_instance.model_dump(mode='json')
@@ -244,6 +262,28 @@ class Ephaptic:
 
                     if func_name in self._exposed_functions:
                         target_func = self._exposed_functions[func_name]
+                        meta = getattr(target_func, META_KEY, {})
+
+                        if meta.get('rate_limit'):
+                            try:
+                                await self._check_ratelimit(
+                                    func_name,
+                                    meta.get('rate_limit'),
+                                    uid=current_uid,
+                                    ip=transport.remote_addr,
+                                )
+                            except RatelimitExceededException as e:
+                                await transport.send(msgpack.dumps({
+                                    "id": call_id,
+                                    "error": {
+                                        "code": "RATELIMIT",
+                                        "message": str(e),
+                                        "data": { "retry_after": e.retry_after },
+                                    },
+                                }))
+                                continue
+
+
                         sig = inspect.signature(target_func)                      
                         
                         try:
@@ -283,8 +323,8 @@ class Ephaptic:
                         try:
                             result = await self._async(target_func)(**final_arguments)
 
-                            return_type = typing.get_type_hints(target_func).get("return", typing.Any)
-                            if return_type is not inspect.Signature.empty and return_type is not typing.Any:
+                            return_type = meta.get('response_model') or typing.get_type_hints(target_func).get("return", typing.Any)
+                            if return_type and return_type is not inspect.Signature.empty and return_type is not typing.Any:
                                 try:
                                     adapter = pydantic.TypeAdapter(return_type)
                                     validated = adapter.validate_python(result, from_attributes=True)

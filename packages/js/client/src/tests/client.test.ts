@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { EphapticClientBase } from '../';
+import { EphapticClientBase, connect } from '../';
 
 vi.stubGlobal('WebSocket', vi.fn(() => ({
     send: vi.fn(),
@@ -84,6 +84,16 @@ describe('EphapticClientBase', () => {
             new EphapticClientBase();
             expect(connectSpy).toHaveBeenCalled();
             connectSpy.mockRestore();
+        });
+    });
+
+    describe('TanStack Query support', () => {
+        it('should generate correct query options object', () => {
+            const client = connect();
+            const options = client.queries.getUser(1, 'a');
+            
+            expect(options.queryKey).toEqual(['getUser', 1, 'a']);
+            expect(typeof options.queryFn).toBe('function');
         });
     });
 });

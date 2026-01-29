@@ -30,13 +30,16 @@ async def add(a: int, b: int) -> int:
 async def emit_event(message: str):
     await ephaptic.to("user123").emit(MyEvent(message=message))
 
-@ephaptic.expose
+@ephaptic.expose() # test as function
 async def emit_typed_event(value: int):
     await ephaptic.to("user123").emit(MyTypedEvent(value=value))
 
-@ephaptic.expose
-def get_user_id() -> str:
+@ephaptic.expose(name='get_user_id') # test with name kwarg
+def get_uid() -> str:
     return str(active_user)
+
+@ephaptic.expose(rate_limit='1/m') # 1 per minute
+async def spam_me() -> str: return 'ok'
 
 if __name__ == "__main__":
     import uvicorn

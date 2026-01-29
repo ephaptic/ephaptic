@@ -101,7 +101,11 @@ But what if your code throws an error? No sweat, it just throws up on the fronte
 And, want to say something to the frontend?
 
 ```python
-await ephaptic.to(user1, user2).notification("Hello, world!", priority="high")
+class Notification(BaseModel):
+    message: str
+    priority: Literal["high", "low", "default"]
+
+await ephaptic.to(user1, user2).emit(Notification(message="Hello, world!", priority="high"))
 ```
 
 To create a schema of your RPC endpoints:

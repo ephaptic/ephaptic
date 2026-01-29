@@ -35,11 +35,11 @@ describe('ephaptic (connected to actual server)', () => {
     it('should be able to make an RPC call and receive a response', async () => {
         const result = await client.echo("hi");
         expect(result).toBe("hi");
-    }, 15000);
+    });
 
     it('should handle RPC call errors', async () => {
         await expect(client.add("a", "b")).rejects.toThrow();
-    }, 15000);
+    });
 
     it('should receive broadcast events from the server', async () => {
         const eventPromise = new Promise<any>(resolve => {
@@ -52,7 +52,7 @@ describe('ephaptic (connected to actual server)', () => {
 
         const receivedMessage = await eventPromise;
         expect(receivedMessage).toBe("Integration test event");
-    }, 15000);
+    });
 
     it('should receive typed broadcast events from the server', async () => {
         const eventPromise = new Promise<any>(resolve => {
@@ -65,5 +65,13 @@ describe('ephaptic (connected to actual server)', () => {
 
         const receivedEvent = await eventPromise;
         expect(receivedEvent).toEqual({ value: 42 });
-    }, 15000);
+    });
+
+    it('should handle rate limiting errors', async () => {
+        console.log('1');
+        await client.spam_me();
+
+        console.log('2');
+        await expect(client.spam_me()).rejects.toThrow(/Rate Limit exceeded/);
+    });
 });

@@ -1,8 +1,6 @@
 import pytest
 import asyncio
-import subprocess
-import httpx
-import os, sys
+import os
 
 from ephaptic import connect
 

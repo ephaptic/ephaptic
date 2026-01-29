@@ -2,9 +2,9 @@ import sys, os, json, inspect, importlib, typing, typer, subprocess as sp
 
 from pathlib import Path
 from pydantic import TypeAdapter
-from pydantic.json_schema import models_json_schema
 
 from ephaptic import Ephaptic
+from ephaptic.decorators import META_KEY
 
 app = typer.Typer(help="Ephaptic CLI tool.")
 
@@ -90,6 +90,8 @@ def generate(
     for name, func in ephaptic._exposed_functions.items():
         typer.secho(f"  - {name}")
 
+        meta = getattr(func, META_KEY, {})
+
         hints = typing.get_type_hints(func)
         sig = inspect.signature(func)
 
@@ -115,8 +117,8 @@ def generate(
 
             
 
-        return_hint = hints.get("return", typing.Any)
-        if return_hint is not type(None):
+        return_hint = meta.get('response_model') or hints.get("return", typing.Any)
+        if return_hint and return_hint is not type(None):
             adapter = TypeAdapter(return_hint)
             method_schema["return"] = create_schema(
                 adapter,

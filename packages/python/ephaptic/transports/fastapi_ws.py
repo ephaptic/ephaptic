@@ -1,8 +1,12 @@
 from .websocket import WebSocketTransport
 from . import Transport
-from starlette.websockets import WebSocketDisconnect
+from starlette.websockets import WebSocket, WebSocketDisconnect
 
 class FastAPIWebSocketTransport(WebSocketTransport):
+    def __init__(self, ws: WebSocket):
+        super().__init__(ws)
+        self.remote_addr = ws.client.host if ws.client else 'unknown'
+
     async def send(self, data: bytes):
         await self.ws.send_bytes(data)
 

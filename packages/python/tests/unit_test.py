@@ -1,7 +1,39 @@
 import pytest
-from ephaptic.ephaptic import Ephaptic, EphapticTarget
+from ephaptic.ephaptic import Ephaptic, EphapticTarget, expose as global_expose
+from ephaptic.decorators import META_KEY
 import pydantic
 from fastapi import FastAPI
+
+def test_global_expose_picked_up():
+    @global_expose
+    def g_func():
+        return 'global'
+    
+    app = FastAPI()
+    eph = Ephaptic.from_app(app)
+
+    assert 'g_func' in eph._exposed_functions
+    assert eph._exposed_functions['g_func']() == 'global'
+
+def test_expose_metadata_storage():
+    app = FastAPI()
+    eph = Ephaptic.from_app(app)
+
+    @eph.expose(rate_limit='5/m')
+    def limited(): ...
+
+    meta = getattr(limited, META_KEY)
+    assert meta['rate_limit'] == (5, 60)
+
+def test_expose_name():
+    app = FastAPI()
+    eph = Ephaptic.from_app(app)
+
+    @eph.expose(name='new_name')
+    def old_name(): return 'ok'
+
+    assert 'new_name' in eph._exposed_functions
+    assert eph._exposed_functions['new_name']() == 'ok'
 
 def test_expose_with_from_app():
     app = FastAPI()
