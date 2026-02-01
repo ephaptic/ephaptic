@@ -47,7 +47,7 @@ Now, we need to tell the frontend about our new code. Run this in your terminal:
 <div class="termy">
 
 ```console
-$ ephaptic backend.src.app:ephaptic -o schema.json --reload
+$ ephaptic generate backend.src.app:ephaptic -o schema.json --watch # You can also output directly as .d.ts, skipping the JSON schema layer.
 
 Watching for changes (/home/user/ephaptic-demo/)...
 Attempting to import `ephaptic` from `backend.src.app` ...
@@ -128,7 +128,6 @@ Now, let's build the frontend app that will run this.
     $ cd frontend
     $ npm i
     $ npm i @ephaptic/client
-    $ npm i --save-dev @ephaptic/type-gen
     ```
 
     </div>
@@ -184,7 +183,6 @@ Now, let's build the frontend app that will run this.
     │
     └  You're all set!
     $ npm i @ephaptic/client
-    $ npm i --save-dev @ephaptic/type-gen
     ```
 
     </div>
@@ -197,9 +195,9 @@ We'll generate the TypeScript definitions and then use them.
     <div class="termy">
 
     ```console
-    $ npx @ephaptic/type-gen ../schema.json -o ./src/schema.d.ts
-    Watching ../schema.json for changes...
-    TypeScript definitions generated at: './src/schema.d.ts'.
+    $ ephaptic from-schema ../schema.json -o ./src/schema.d.ts
+    Watching for changes (../schema.json)...
+    Schema generated to `./src/schema.d.ts`.
     ```
 
     </div>
@@ -209,9 +207,9 @@ We'll generate the TypeScript definitions and then use them.
     <div class="termy">
 
     ```console
-    $ npx @ephaptic/type-gen ../schema.json -o ./src/lib/schema.d.ts
-    Watching ../schema.json for changes...
-    TypeScript definitions generated at: './src/lib/schema.d.ts'.
+    $ ephaptic from-schema ../schema.json -o ./src/lib/schema.d.ts
+    Watching for changes (../schema.json)...
+    Schema generated to `./src/lib/schema.d.ts`.
     ```
 
     </div>

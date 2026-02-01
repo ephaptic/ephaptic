@@ -40,6 +40,7 @@ fi
 
 echo -e "${YELLOW}Running Python Unit Tests...${NC}"
 pytest "$PYTHON_PACKAGE_DIR/tests/unit_test.py"
+pytest "$PYTHON_PACKAGE_DIR/tests/cli_test.py"
 echo -e "${GREEN}Python Unit Tests Passed.${NC}"
 
 cd "$JS_CLIENT_DIR"

@@ -111,7 +111,9 @@ await ephaptic.to(user1, user2).emit(Notification(message="Hello, world!", prior
 To create a schema of your RPC endpoints:
 
 ```
-$ ephaptic src.app:app -o schema.json # --watch to run in background and auto-reload on file change.
+$ ephaptic generate src.app:app -o schema.json # --watch to run in background and auto-reload on file change.
+$ # Or:
+$ ephaptic generate src.app:app -o ephaptic.d.ts # converts directly to typescript
 ```
 
 Pydantic is entirely supported. It's validated for arguments, it's auto-serialized when you return a pydantic model, and your models receive type definitions in the schema.
@@ -169,8 +171,7 @@ const client = connect({ url: '...', auth: { token: window.localStorage.getItem(
 And you can load types, too.
 
 ```
-$ npm i --save-dev @ephaptic/type-gen
-$ npx @ephaptic/type-gen ./schema.json -o schema.d.ts # --watch to auto-reload upon changes
+$ ephaptic from-schema ./schema.json -o schema.d.ts # --watch to auto-reload upon changes
 ```
 
 ```typescript
