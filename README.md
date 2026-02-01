@@ -8,17 +8,7 @@
 <br>
 <h1>ephaptic</h1>
 <br>
-<a href="https://github.com/ephaptic/ephaptic/blob/main/LICENSE"><img alt="GitHub License" src="https://img.shields.io/github/license/ephaptic/ephaptic?style=for-the-badge&labelColor=%23222222" /></a> <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/ephaptic/ephaptic/publish-js.yml?style=for-the-badge&label=NPM%20Build%20Status&labelColor=%23222222" /> <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/ephaptic/ephaptic/publish-python.yml?style=for-the-badge&label=PyPI%20Build%20Status&labelColor=%23222222" /> <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/ephaptic/ephaptic/tests.yml?style=for-the-badge&label=tests&labelColor=%23222222" />
-
-<a href="https://pypi.org/project/ephaptic/">
-<img alt="PyPI - Version"
-       src="https://img.shields.io/pypi/v/ephaptic?style=for-the-badge&labelColor=%23222222" />
-</a>
-
-<a href="https://www.npmjs.com/package/@ephaptic/client">
-  <img alt="NPM - Version"
-       src="https://img.shields.io/npm/v/%40ephaptic%2Fclient?style=for-the-badge&labelColor=%23222222" />
-</a>
+<a href="https://github.com/ephaptic/ephaptic/blob/main/LICENSE"><img alt="GitHub License" src="https://img.shields.io/github/license/ephaptic/ephaptic?style=for-the-badge&labelColor=%23222222" /></a> <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/ephaptic/ephaptic/publish-js.yml?style=for-the-badge&label=NPM%20Build%20Status&labelColor=%23222222" /> <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/ephaptic/ephaptic/publish-python.yml?style=for-the-badge&label=PyPI%20Build%20Status&labelColor=%23222222" /> <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/ephaptic/ephaptic/tests.yml?style=for-the-badge&label=tests&labelColor=%23222222" /> <a href="https://pypi.org/project/ephaptic/"><img alt="PyPI - Version" src="https://img.shields.io/pypi/v/ephaptic?style=for-the-badge&labelColor=%23222222" /></a> <a href="https://www.npmjs.com/package/@ephaptic/client"><img alt="NPM - Version" src="https://img.shields.io/npm/v/%40ephaptic%2Fclient?style=for-the-badge&labelColor=%23222222" /></a>
 
 
 </div>
