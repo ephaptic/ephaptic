@@ -234,21 +234,19 @@ def KT_generate(data: dict, package_name: str):
         if schema['type'] == 'object':
             lines.append('@JsonClass(generateAdapter = true)')
             lines.append(f'data class {name}(')
-            # i don't know if this is a good idea...
-            lines.extend([
-                f"  val {validate(prop_name)}: "
-                f"{(kt := KT_resolve_type(prop_schema))}"
-                f"{'?' if (prop_name not in schema.get('required', [])
-                        or prop_schema.get('type') == 'null'
-                        or any(t.get('type') == 'null' for t in prop_schema.get('anyOf', [])))
-                and not kt.endswith('?') else ''}"
-                f"{' = null' if (prop_name not in schema.get('required', [])
-                                or prop_schema.get('type') == 'null'
-                                or any(t.get('type') == 'null' for t in prop_schema.get('anyOf', [])))
-                else ''},"
-                for prop_name, prop_schema in schema['properties'].items()
-            ])
-            # ...but i like list comprehensions :)
+            
+            for prop_name, prop_schema in schema['properties'].items():
+                kt_type = KT_resolve_type(prop_schema)
+                
+                required = prop_name in schema.get('required', [])
+                explicit_null = prop_schema.get('type') == 'null'
+                union_null = any(t.get('type') == 'null' for t in prop_schema.get('anyOf', []))
+                
+                nullable = not required or explicit_null or union_null               
+                if nullable and not kt_type.endswith('?'): kt_type += '?'
+
+                lines.append(f"  val {validate(prop_name)}: {kt_type}{' = null' if nullable else ''},")
+                
             lines.append(')')
             lines.append('')
         else:
@@ -282,7 +280,7 @@ def KT_generate(data: dict, package_name: str):
         return_type = KT_resolve_type(method_data['return']) if method_data.get('return') else 'Any?'
 
         lines.append(f" suspend fun {validate(method_name)}({', '.join(args)}): {return_type} {{")
-        lines.append(f'      return client.request<{return_type}>("{method_name}", {', '.join(params)})')
+        lines.append(f'      return client.request<{return_type}>("{method_name}", {", ".join(params)})')
         lines.append('  }')
         lines.append('')
 
