@@ -245,7 +245,7 @@ def KT_generate(data: dict, package_name: str):
                 nullable = not required or explicit_null or union_null               
                 if nullable and not kt_type.endswith('?'): kt_type += '?'
 
-                lines.append(f"  val {validate(prop_name)}: {kt_type}{' = null' if is_nullable else ''},")
+                lines.append(f"  val {validate(prop_name)}: {kt_type}{' = null' if nullable else ''},")
                 
             lines.append(')')
             lines.append('')
