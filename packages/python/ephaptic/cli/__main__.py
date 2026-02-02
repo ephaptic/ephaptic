@@ -280,7 +280,7 @@ def KT_generate(data: dict, package_name: str):
         return_type = KT_resolve_type(method_data['return']) if method_data.get('return') else 'Any?'
 
         lines.append(f" suspend fun {validate(method_name)}({', '.join(args)}): {return_type} {{")
-        lines.append(f'      return client.request<{return_type}>("{method_name}", {', '.join(params)})')
+        lines.append(f'      return client.request<{return_type}>("{method_name}", {", ".join(params)})')
         lines.append('  }')
         lines.append('')
 
