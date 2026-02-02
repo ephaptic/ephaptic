@@ -39,7 +39,9 @@ fixture_path = 'packages.python.tests.fixtures.server:ephaptic'
 def test_generate_ts():
     result = runner.invoke(app, ['generate', fixture_path, '-o', '-', '--lang', 'ts'])
 
-    assert result.exit_code == 0, result.stdout + result.stderr
+    try: assert result.exit_code == 0, result.stdout + result.stderr
+    except AssertionError: raise result.exception
+
     output = result.stdout
 
     assert "export interface MyEvent" in output
@@ -56,7 +58,8 @@ def test_generate_ts():
 def test_generate_kt():
     result = runner.invoke(app, ['generate', fixture_path, '-o', '-', '--lang', 'kt'])
 
-    assert result.exit_code == 0, result.stdout + result.stderr
+    try: assert result.exit_code == 0, result.stdout + result.stderr
+    except AssertionError: raise result.exception
     output = result.stdout
 
     assert "package com.example.app" in output
@@ -71,7 +74,8 @@ def test_generate_kt():
 def test_generate_json():
     result = runner.invoke(app, ['generate', fixture_path, '-o', '-', '--lang', 'json'])
 
-    assert result.exit_code == 0, result.stdout + result.stderr
+    try: assert result.exit_code == 0, result.stdout + result.stderr
+    except AssertionError: raise result.exception
     output = result.stdout
     
     import json

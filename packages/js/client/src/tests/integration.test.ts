@@ -74,4 +74,12 @@ describe('ephaptic (connected to actual server)', () => {
         console.log('2');
         await expect(client.spam_me()).rejects.toThrow(/Rate Limit exceeded/);
     });
+
+    it('should access routes via RPC', async () => {
+        const result = await client.r_echo("js-test");
+        expect(result.is_rpc).toBe(true);
+        expect(result.is_http).toBe(false);
+        expect(result.active_user).toBe('user123');
+        expect(result.message).toBe('js-test')
+    }, 15000);
 });

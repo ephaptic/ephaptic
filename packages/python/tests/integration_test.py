@@ -1,6 +1,7 @@
 import pytest
 import asyncio
 import os
+import httpx
 
 from ephaptic import connect
 
@@ -71,3 +72,43 @@ async def test_typed_event_emission():
     finally:
         client.off("MyTypedEvent", event_handler)
     
+
+@pytest.mark.asyncio
+async def test_router_rpc_access():
+    client = await connect(SERVER_URL, auth="user123")
+    result = await client.r_echo(message="hello")
+    assert result['is_rpc'] == True
+    assert result['is_http'] == False
+    assert result['active_user'] == 'user123'
+    assert result['message'] == 'hello'
+
+@pytest.mark.asyncio
+async def test_router_http_access():
+    async with httpx.AsyncClient(base_url=HTTP_SERVER_URL) as client:
+        resp = await client.get('/r_echo', params={'message': 'hello'})
+        assert resp.status_code == 401
+
+        resp = await client.get('/r_echo', params={'message': 'hello'}, headers={'Authorization': 'Bearer user123'})
+        assert resp.status_code == 200
+        result = resp.json()
+
+        assert result['is_rpc'] == False
+        assert result['is_http'] == True
+        assert result['active_user'] == 'user123'
+        assert result['message'] == 'hello'
+
+@pytest.mark.asyncio
+async def test_router_functions_in_openapi():
+    async with httpx.AsyncClient(base_url=HTTP_SERVER_URL) as client:
+        resp = await client.get('/openapi.json')
+        result = resp.json()
+
+        assert 'paths' in result
+        paths = result['paths']
+
+        assert '/r_echo' in paths and 'get' in paths['/r_echo']
+        r_echo = paths['/r_echo']['get']
+
+        assert r_echo['parameters'][0]['name'] == 'message'
+        assert r_echo['parameters'][0]['required'] == True
+        assert r_echo['parameters'][0]['schema']['type'] == 'string'

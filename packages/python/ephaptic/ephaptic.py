@@ -12,6 +12,8 @@ from .transports import Transport
 
 from .decorators import META_KEY, Expose, Event, IdentityLoader
 
+from .ctx import _scope_ctx
+
 import typing
 from typing import Optional, Callable, Any, List, Set, Dict
 import inspect
@@ -79,6 +81,7 @@ manager = ConnectionManager()
 _EXPOSED_FUNCTIONS = {}
 _EXPOSED_EVENTS = {}
 _IDENTITY_LOADER: Optional[Callable] = None
+_HTTP_IDENTITY_LOADER: Optional[Callable] = None
 
 _LOCAL_RATELIMIT_CACHE: Dict[str, List] = {} # [hits, expire_at]
 # if redis isn't set up, assume that this is the only instance [no 'multiple nodes'] so ratelimits can be stored in memory.
@@ -115,18 +118,25 @@ def _set_identity_loader(f):
     global _IDENTITY_LOADER
     _IDENTITY_LOADER = f
 
+def _set_http_identity_loader(f):
+    global _HTTP_IDENTITY_LOADER
+    _HTTP_IDENTITY_LOADER = f
+
 expose = Expose(_EXPOSED_FUNCTIONS)
 event = Event(_EXPOSED_EVENTS)
 identity_loader = IdentityLoader(_set_identity_loader)
+http_identity_loader = IdentityLoader(_set_http_identity_loader)
 
 class Ephaptic:
     _exposed_functions: Dict[str, Callable] = {}
     _exposed_events: Dict[str, typing.Type[pydantic.BaseModel]]
     _identity_loader: Optional[Callable] = None
+    _http_identity_loader: Optional[Callable] = None
 
     expose: Expose
     event: Event
     identity_loader: IdentityLoader
+    http_identity_loader: IdentityLoader
 
     def _async(self, func: Callable):
         async def wrapper(*args, **kwargs) -> Any:
@@ -151,10 +161,10 @@ class Ephaptic:
 
         match module:
             case "quart":
-                from .adapters.quart_ import QuartAdapter
+                from .ext.quart_.adapter import QuartAdapter
                 adapter = QuartAdapter(instance, app, path, manager)
             case "fastapi":
-                from .adapters.fastapi_ import FastAPIAdapter
+                from .ext.fastapi_.adapter import FastAPIAdapter
                 adapter = FastAPIAdapter(instance, app, path, manager)
             case _:
                 raise TypeError(f"Unsupported app type: {module}")
@@ -162,10 +172,12 @@ class Ephaptic:
         instance._exposed_functions = _EXPOSED_FUNCTIONS.copy()
         instance._exposed_events = _EXPOSED_EVENTS.copy()
         instance._identity_loader = _IDENTITY_LOADER
+        instance._http_identity_loader = _HTTP_IDENTITY_LOADER
 
         instance.expose = Expose(instance._exposed_functions)
         instance.event = Event(instance._exposed_events)
         instance.identity_loader = IdentityLoader(lambda f: setattr(instance, '_identity_loader', f))
+        instance.http_identity_loader = IdentityLoader(lambda f: setattr(instance, '_http_identity_loader', f))
 
         return instance
     
@@ -284,7 +296,8 @@ class Ephaptic:
                                 continue
 
 
-                        sig = inspect.signature(target_func)                      
+                        hints = meta.get('hints') or typing.get_type_hints(target_func)
+                        sig = meta.get('sig') or inspect.signature(target_func)                      
                         
                         try:
                             bound = sig.bind(*args, **kwargs)
@@ -293,11 +306,10 @@ class Ephaptic:
                             await transport.send(msgpack.dumps({"id": call_id, "error": str(e)}))
                             continue
 
-                        annotations = typing.get_type_hints(target_func)
                         fields = {}
                         for name, param in sig.parameters.items():
-                            if name in annotations:
-                                fields[name] = (annotations[name], param.default if param.default is not inspect.Parameter.empty else ...)
+                            if name in hints:
+                                fields[name] = (hints[name], param.default if param.default is not inspect.Parameter.empty else ...)
                             else:
                                 fields[name] = (Any, param.default if param.default is not inspect.Parameter.empty else ...)
 
@@ -319,11 +331,12 @@ class Ephaptic:
                         
                         token_transport = _active_transport_ctx.set(transport)
                         token_user = _active_user_ctx.set(current_uid)
+                        token_scope = _scope_ctx.set('rpc')
 
                         try:
                             result = await self._async(target_func)(**final_arguments)
 
-                            return_type = meta.get('response_model') or typing.get_type_hints(target_func).get("return", typing.Any)
+                            return_type = meta.get('response_model') or hints.get("return", typing.Any)
                             if return_type and return_type is not inspect.Signature.empty and return_type is not typing.Any:
                                 try:
                                     adapter = pydantic.TypeAdapter(return_type)
@@ -353,6 +366,7 @@ class Ephaptic:
                         finally:
                             _active_transport_ctx.reset(token_transport)
                             _active_user_ctx.reset(token_user)
+                            _scope_ctx.reset(token_scope)
                     else:
                         await transport.send(msgpack.dumps({
                             "id": call_id, 

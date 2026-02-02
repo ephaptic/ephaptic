@@ -1,5 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from ephaptic import Ephaptic, active_user
+from ephaptic.ctx import is_http, is_rpc
+from ephaptic.ext.fastapi_.router import Router
 import pydantic
 import os
 
@@ -17,6 +19,12 @@ class MyTypedEvent(pydantic.BaseModel):
 @ephaptic.identity_loader
 def load_user(auth: str):
     return auth
+
+@ephaptic.http_identity_loader
+def load_http_user(request: Request):
+    token = request.headers.get('Authorization')
+    if not token: return None
+    return token.removeprefix('Bearer ')
 
 @ephaptic.expose
 async def echo(message: str) -> str:
@@ -40,6 +48,19 @@ def get_uid() -> str:
 
 @ephaptic.expose(rate_limit='1/m') # 1 per minute
 async def spam_me() -> str: return 'ok'
+
+router = Router(ephaptic)
+
+@router.get('/r_echo', requires_login=True)
+def r_echo(message: str) -> dict:
+    return {
+        "is_rpc": is_rpc(),
+        "is_http": is_http(),
+        "active_user": str(active_user),
+        "message": message,
+    }
+
+app.include_router(router)
 
 if __name__ == "__main__":
     import uvicorn

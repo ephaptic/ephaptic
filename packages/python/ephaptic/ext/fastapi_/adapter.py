@@ -1,9 +1,12 @@
 from fastapi import FastAPI, WebSocket
-from ..transports.fastapi_ws import FastAPIWebSocketTransport
+from ...transports.fastapi_ws import FastAPIWebSocketTransport
+from .middleware import CtxMiddleware
 
 class FastAPIAdapter:
     def __init__(self, ephaptic, app: FastAPI, path, manager):
         self.ephaptic = ephaptic
+
+        app.add_middleware(CtxMiddleware, ephaptic=ephaptic)
 
         @app.websocket(path)
         async def ephaptic_ws(websocket: WebSocket):

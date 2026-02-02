@@ -29,6 +29,7 @@ test = [
     "pytest-asyncio",
     "fastapi",
     "uvicorn",
+    "httpx",
 ]
 
 [project.urls]

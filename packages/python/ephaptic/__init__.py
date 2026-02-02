@@ -7,5 +7,10 @@ from .ephaptic import (
 )
 
 from .client import (
-    connect
+    connect,
+)
+
+from .ctx import (
+    is_http,
+    is_rpc,
 )

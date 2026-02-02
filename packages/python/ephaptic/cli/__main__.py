@@ -86,7 +86,7 @@ def TS_resolve_type(schema: Dict[str, Any]) -> str:
     if schema.get('type') == 'null': return 'null'
 
     if schema['type'] == 'object':
-        if not schema['properties']: return 'Record<string, any>'
+        if not schema.get('properties'): return 'Record<string, any>'
         props = [
             f"{key_name(key)}{'' if key in schema.get('required', []) else '?'}: {TS_resolve_type(prop_schema)}"
             for key, prop_schema in schema['properties'].items()
@@ -402,8 +402,8 @@ def generate(
 
         meta = getattr(func, META_KEY, {})
 
-        hints = typing.get_type_hints(func)
-        sig = inspect.signature(func)
+        hints = meta.get('hints') or typing.get_type_hints(func)
+        sig = meta.get('sig') or inspect.signature(func)
 
         method_schema = {
             "args": {},

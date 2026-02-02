@@ -1,5 +1,5 @@
 from quart import websocket, Quart
-from ..transports.websocket import WebSocketTransport
+from ...transports.websocket import WebSocketTransport
 
 class QuartAdapter:
     def __init__(self, ephaptic, app: Quart, path, manager):

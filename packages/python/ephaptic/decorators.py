@@ -23,6 +23,8 @@ class Expose:
         name: Optional[str] = None,
         response_model: Optional[type] = None,
         rate_limit: Optional[str] = None,
+        hints: Optional[dict[str, Any]] = None,
+        sig: Optional[inspect.Signature] = None,
     ):
         ...
 
