@@ -311,7 +311,7 @@ def calculate_language(lang: str, output: Path):
     if lang is None:
         if not output or str(output) == '-': raise ValueError("You must specify a language or an output path.")
         lang = os.path.splitext(output)[-1]
-        lang.removeprefix('.')
+        lang = lang.removeprefix('.')
     
     map = {
         'kotlin': 'kt',
