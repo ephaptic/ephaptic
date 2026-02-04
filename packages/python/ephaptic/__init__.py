@@ -1,6 +1,5 @@
 from .ephaptic import (
     Ephaptic,
-    active_user,
     expose,
     identity_loader,
     event,
@@ -13,4 +12,5 @@ from .client import (
 from .ctx import (
     is_http,
     is_rpc,
+    active_user,
 )

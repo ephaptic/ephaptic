@@ -121,7 +121,7 @@ async def load_identity(auth): # You can use synchronous functions here too.
     return user_id
 ```
 
-From here, you can use <code>ephaptic.active_user</code> within any exposed function, and it will give you the current active user ID / whatever else your identity loading function returns. (This is also how <code>ephaptic.to</code> works.)
+From here, you can use <code>ephaptic.active_user()</code> within any exposed function, and it will give you the current active user ID / whatever else your identity loading function returns. (This is also how <code>ephaptic.to</code> works.)
 
 </details>
 

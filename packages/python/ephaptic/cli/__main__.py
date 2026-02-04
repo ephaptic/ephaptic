@@ -59,17 +59,17 @@ def load_ephaptic(import_name: str) -> Ephaptic:
         log(typer.style(f"Attempting to import `{var_name}` from `{module_name}`..."))
         module = importlib.import_module(module_name)
     except ImportError as e:
-        log(typer.style(f"Error: Can't import '{module_name}'.\n{e}", fg=typer.colors.RED))
+        typer.echo(typer.style(f"Error: Can't import '{module_name}'.\n{e}", fg=typer.colors.RED))
         raise typer.Exit(1)
     
     try:
         instance = getattr(module, var_name)
     except AttributeError:
-        log(typer.style(f"Error: Variable '{var_name}' not found in module '{module_name}'.", fg=typer.colors.RED))
+        typer.echo(typer.style(f"Error: Variable '{var_name}' not found in module '{module_name}'.", fg=typer.colors.RED))
         raise typer.Exit(1)
     
     if not isinstance(instance, Ephaptic):
-        log(typer.style(f"Error: '{var_name}' is not an Ephaptic client. It is type: {type(instance)}", fg=typer.colors.RED))
+        typer.echo(typer.style(f"Error: '{var_name}' is not an Ephaptic client. It is type: {type(instance)}", fg=typer.colors.RED))
         raise typer.Exit(1)
     
     return instance
@@ -308,8 +308,8 @@ def run_subprocess():
     sp.run(cmd)
 
 def calculate_language(lang: str, output: Path):
-    if lang is None and str(output) != '-':
-        if not output: raise ValueError("You must specify a language or an output path.")
+    if lang is None:
+        if not output or str(output) == '-': raise ValueError("You must specify a language or an output path.")
         lang = os.path.splitext(output)[-1]
     
     map = {
@@ -363,7 +363,7 @@ def generate_output(lang, schema_output, package_name, output: Path):
 @app.command()
 def generate(
     client: str = typer.Argument('app:client', help="The import string for the Ephaptic client."),
-    output: Path = typer.Option(None, '--output', '-o', help="Output path for the (default: schema.json / ephaptic.d.ts / Ephaptic.kt)."),
+    output: Path = typer.Option(None, '--output', '-o', help="Output path for the generated file (default: schema.json / ephaptic.d.ts / Ephaptic.kt)."),
     watch: bool = typer.Option(False, '--watch', '-w', help="Watch for changes in `.py` files and regenerate schema file automatically."),
     lang: str = typer.Option(None, '--lang', '-l', help="Output language ('json', 'kotlin', 'kt', 'typescript', 'ts') (default: autodetected from output path)"),
     package_name: str = typer.Option('com.example.app', '--package-name', '-p', help="Package name (required for Kotlin)")
@@ -454,7 +454,7 @@ def generate(
 @app.command()
 def from_schema(
     schema_path: Path = typer.Option('schema.json', help="Path to the schema file."),
-    output: Path = typer.Option(None, '--output', '-o', help="Output path for the (default: ephaptic.d.ts / Ephaptic.kt)."),
+    output: Path = typer.Option(None, '--output', '-o', help="Output path for the generated file (default: ephaptic.d.ts / Ephaptic.kt)."),
     watch: bool = typer.Option(False, '--watch', '-w', help="Watch for changes in `.py` files and regenerate schema file automatically."),
     lang: str = typer.Option(None, '--lang', '-l', help="Output language ('kotlin', 'kt', 'typescript', 'ts') (default: autodetected from output path)"),
     package_name: str = typer.Option('com.example.app', '--package-name', '-p', help="Package name (required for Kotlin)")
@@ -479,6 +479,8 @@ def from_schema(
     schema_output = json.loads(schema_path.read_text())
 
     generate_output(lang, schema_output, package_name, output)
+
+click = typer.main.get_command(app)
 
 if __name__ == "__main__":
     app()

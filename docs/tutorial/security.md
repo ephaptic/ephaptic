@@ -22,7 +22,7 @@ from datetime import datetime, timezone, timedelta
 import jwt
 import random, string
 
-JWT_SECRET = ''.join(random.choices(string.ascii_letters+string.digits, k=32)) # You would use an actual JWT secret in a `.env` in production!
+JWT_SECRET = ''.join(random.choices(string.ascii_letters+string.digits, k=32)) # We would use an actual JWT secret in a `.env` in production!
 
 def generate_token(user_id):
     payload = {
@@ -53,6 +53,10 @@ async def login(username: str) -> str: # Expose a login function that returns a 
         return generate_token(1)
     
     raise Exception("Invalid username")
+
+@ephaptic.expose
+async def get_user() -> str:
+    return active_user()
 ```
 
 Now, on the frontend, we can do this:
@@ -76,7 +80,7 @@ So, let's add login handling to the frontend.
     }) as unknown as EphapticService;
 
     function App() {
-        const [user, setUser] = useState<User | null>(null);
+        const [user, setUser] = useState<string | null>(null);
 
         useEffect(() => {
             if (token) {
@@ -104,7 +108,7 @@ So, let's add login handling to the frontend.
         if (!token) return <button onClick={handleLogin}>Login</button>;
         else return (
             <div>
-                <h1>Welcome, {user?.username}</h1>
+                <h1>Welcome, {user}</h1>
                 <button onClick={handleLogout}>Logout</button>
             </div>
         );
@@ -123,7 +127,7 @@ So, let's add login handling to the frontend.
             auth: { _jwt: token }
         }) as unknown as EphapticService;
 
-        let user = $state<User | null>(null);
+        let user = $state<string | null>(null);
 
         onMount(async () => {
             if (token) {
@@ -152,7 +156,7 @@ So, let's add login handling to the frontend.
     {#if !token}
         <button onclick={handleLogin}>Login</button>
     {:else}
-        <h1>Welcome, {user?.username}</h1>
+        <h1>Welcome, {user}</h1>
         <button onclick={handleLogout}>Logout</button>
     {/if}
     ```

@@ -37,7 +37,7 @@ runner = CliRunner()
 fixture_path = 'packages.python.tests.fixtures.server:ephaptic'
 
 def test_generate_ts():
-    result = runner.invoke(app, ['generate', fixture_path, '-o', '-', '--lang', 'ts'])
+    result = runner.invoke(app, ['generate', fixture_path, '-o', '-', '--lang', 'ts'], catch_exceptions=False)
 
     try: assert result.exit_code == 0, result.stdout + result.stderr
     except AssertionError: raise result.exception
@@ -56,7 +56,7 @@ def test_generate_ts():
     assert "echo(message: string): EphapticQuery" in output
 
 def test_generate_kt():
-    result = runner.invoke(app, ['generate', fixture_path, '-o', '-', '--lang', 'kt'])
+    result = runner.invoke(app, ['generate', fixture_path, '-o', '-', '--lang', 'kt'], catch_exceptions=False)
 
     try: assert result.exit_code == 0, result.stdout + result.stderr
     except AssertionError: raise result.exception
@@ -72,7 +72,7 @@ def test_generate_kt():
     assert "suspend fun add(a: Long, b: Long): Long" in output
 
 def test_generate_json():
-    result = runner.invoke(app, ['generate', fixture_path, '-o', '-', '--lang', 'json'])
+    result = runner.invoke(app, ['generate', fixture_path, '-o', '-', '--lang', 'json'], catch_exceptions=False)
 
     try: assert result.exit_code == 0, result.stdout + result.stderr
     except AssertionError: raise result.exception

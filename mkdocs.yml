@@ -62,18 +62,22 @@ markdown_extensions:
   - pymdownx.snippets:
       base_path: .
   - tables
+  - mkdocs-click
 
 nav:
   - Home: index.md
-  - Tutorial - User Guide:
+  - Tutorial:
     - Intro: tutorial/index.md
     - First Steps: tutorial/first-steps.md
     - Parameters & Pydantic: tutorial/parameters.md
     - Authentication: tutorial/security.md
     - Events: tutorial/events.md
-  - Advanced User Guide:
+    - The Router: tutorial/router.md
+  - Advanced:
     - Deployment: advanced/deployment.md
+    - Redis Diagram: diagram.md
     - TanStack Query Integration: advanced/tanstack.md
+    - The CLI: advanced/cli.md
 
 extra_css:
   - stylesheets/extra.css

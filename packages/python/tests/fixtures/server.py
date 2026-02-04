@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from ephaptic import Ephaptic, active_user
 from ephaptic.ctx import is_http, is_rpc
-from ephaptic.ext.fastapi_.router import Router
+from ephaptic.ext.fastapi import Router
 import pydantic
 import os
 
@@ -44,7 +44,7 @@ async def emit_typed_event(value: int):
 
 @ephaptic.expose(name='get_user_id') # test with name kwarg
 def get_uid() -> str:
-    return str(active_user)
+    return active_user()
 
 @ephaptic.expose(rate_limit='1/m') # 1 per minute
 async def spam_me() -> str: return 'ok'
@@ -56,7 +56,7 @@ def r_echo(message: str) -> dict:
     return {
         "is_rpc": is_rpc(),
         "is_http": is_http(),
-        "active_user": str(active_user),
+        "active_user": active_user(),
         "message": message,
     }
 

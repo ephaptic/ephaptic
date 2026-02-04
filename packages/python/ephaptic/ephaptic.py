@@ -12,16 +12,11 @@ from .transports import Transport
 
 from .decorators import META_KEY, Expose, Event, IdentityLoader
 
-from .ctx import _scope_ctx
+from .ctx import _scope_ctx, _active_transport_ctx, _active_user_ctx
 
 import typing
 from typing import Optional, Callable, Any, List, Set, Dict
 import inspect
-
-_active_transport_ctx = ContextVar('active_transport', default=None)
-_active_user_ctx = ContextVar('active_user', default=None)
-
-active_user = LocalProxy(_active_user_ctx.get)
 
 CHANNEL_NAME = "ephaptic:broadcast"
 
@@ -161,10 +156,10 @@ class Ephaptic:
 
         match module:
             case "quart":
-                from .ext.quart_.adapter import QuartAdapter
+                from .ext.quart.adapter import QuartAdapter
                 adapter = QuartAdapter(instance, app, path, manager)
             case "fastapi":
-                from .ext.fastapi_.adapter import FastAPIAdapter
+                from .ext.fastapi.adapter import FastAPIAdapter
                 adapter = FastAPIAdapter(instance, app, path, manager)
             case _:
                 raise TypeError(f"Unsupported app type: {module}")

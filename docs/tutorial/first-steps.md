@@ -59,6 +59,8 @@ Schema generated to `schema.json`.
 
 </div>
 
+For more info about the CLI, head to [The CLI](../advanced/cli.md).
+
 ## The Frontend
 
 Now, let's build the frontend app that will run this.

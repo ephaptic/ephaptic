@@ -3,8 +3,8 @@ from functools import wraps
 import inspect
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from ...ephaptic import Ephaptic, active_user, RatelimitExceededException
-from ...ctx import is_http, is_rpc
+from ...ephaptic import Ephaptic, RatelimitExceededException
+from ...ctx import is_http, is_rpc, active_user
 from ...utils import parse_limit
 
 class Router(APIRouter):
@@ -38,7 +38,7 @@ class Router(APIRouter):
 
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            if auth and not active_user:
+            if auth and active_user() is None:
                 raise Exception('Unauthorized') if is_rpc() else HTTPException(status_code=401, detail='Unauthorized')
             
             return await self.ephaptic._async(func)(*args, **kwargs)
