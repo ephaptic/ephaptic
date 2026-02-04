@@ -41,16 +41,8 @@ What are you waiting for? **Let's go.**
 <details>
     <summary>Python</summary>
     
-<h4>Client:</h4>
-
 ```
 $ pip install ephaptic
-```
-
-<h4>Server:</h4>
-
-```
-$ pip install ephaptic[server]
 ```
 
 ```python

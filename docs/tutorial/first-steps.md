@@ -14,7 +14,7 @@ Run this in your project directory:
 
 ```console
 $ mkdir -p backend/src
-$ echo "ephaptic[server]" > backend/requirements.txt
+$ echo "ephaptic" > backend/requirements.txt
 $ echo "fastapi[standard]" >> backend/requirements.txt
 $ python -m venv backend/.venv
 $ source backend/.venv/bin/activate

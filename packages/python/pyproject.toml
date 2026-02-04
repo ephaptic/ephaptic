@@ -20,10 +20,10 @@ dependencies = [
     "typer[standard]>=0.20.0",
     "python-dotenv",
     "watchfiles",
+    "redis",
 ]
 
 [project.optional-dependencies]
-server = ["redis"]
 test = [
     "pytest",
     "pytest-asyncio",
