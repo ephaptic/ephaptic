@@ -34,7 +34,7 @@ def key_name(key: str) -> str:
 def validate(name: str) -> str:
     if IDENTIFIER_REGEX.match(name):
         safe = re.sub(r'[^a-zA-Z0-9_$]', '_', name)
-        log(typer.style("[warning] '{name}' is not a valid identifier. sanitizing to '{safe}'", fg=typer.colors.YELLOW))
+        if name != safe: log(typer.style(f"[warning] '{name}' is not a valid identifier. sanitizing to '{safe}'", fg=typer.colors.YELLOW))
         return safe
     return name
 
@@ -85,7 +85,7 @@ def TS_resolve_type(schema: Dict[str, Any]) -> str:
     if schema.get('type') == 'string': return 'string'
     if schema.get('type') == 'null': return 'null'
 
-    if schema['type'] == 'object':
+    if schema.get('type') == 'object':
         if not schema.get('properties'): return 'Record<string, any>'
         props = [
             f"{key_name(key)}{'' if key in schema.get('required', []) else '?'}: {TS_resolve_type(prop_schema)}"
@@ -198,7 +198,7 @@ def KT_resolve_type(schema: Dict[str, Any]) -> str:
         if isinstance(first, bool): return 'Boolean'
         return 'Any?'
     if schema.get('anyOf'):
-        nonNull = [t for t in schema['anyOf'] if t['type'] != 'null']
+        nonNull = [t for t in schema['anyOf'] if t.get('type') != 'null']
         if len(nonNull) == 1:
             type = KT_resolve_type(nonNull[0])
             if not type.endswith('?'): type += '?'
@@ -231,11 +231,11 @@ def KT_generate(data: dict, package_name: str):
 
     for name, schema in data.get('definitions', {}).items():
         name = validate(name)
-        if schema['type'] == 'object':
+        if schema.get('type') == 'object':
             lines.append('@JsonClass(generateAdapter = true)')
             lines.append(f'data class {name}(')
             
-            for prop_name, prop_schema in schema['properties'].items():
+            for prop_name, prop_schema in schema.get('properties').items():
                 kt_type = KT_resolve_type(prop_schema)
                 
                 required = prop_name in schema.get('required', [])
