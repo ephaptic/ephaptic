@@ -312,7 +312,10 @@ class Ephaptic:
 
                         try:
                             validated_data = DynamicInputModel(**bound.arguments)
-                            final_arguments = validated_data.model_dump()
+                            final_arguments = {
+                                field_name: getattr(validated_data, field_name)
+                                for field_name in DynamicInputModel.model_fields.keys()
+                            }
                         except pydantic.ValidationError as e:
                             await transport.send(msgpack.dumps({
                                 "id": call_id,

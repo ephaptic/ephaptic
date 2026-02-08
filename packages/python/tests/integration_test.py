@@ -29,6 +29,12 @@ async def test_rpc_get_user_id():
     result = await client.get_user_id()
     assert result == "user123"
 
+@pytest.mark.asyncio
+async def test_pydantic_objects():
+    client = await connect(SERVER_URL, auth="user123")
+    result = await client.test_pydantic({ 'text': 'hi', 'num': 5 })
+    assert result['text'] == 'hi' and result['num'] == 5
+
 
 @pytest.mark.asyncio
 async def test_event_emission():
