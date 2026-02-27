@@ -363,13 +363,17 @@ def generate_output(lang, schema_output, package_name, output: Path):
 
 @app.command()
 def generate(
-    client: str = typer.Argument('app:client', help="The import string for the Ephaptic client."),
+    source: str = typer.Argument('schema.json', help="Either the import string for the Ephaptic client. (e.g. `app:client`) or a path to an existing schema file (e.g. `schema.json`)."),
     output: Path = typer.Option(None, '--output', '-o', help="Output path for the generated file (default: schema.json / ephaptic.d.ts / Ephaptic.kt)."),
     watch: bool = typer.Option(False, '--watch', '-w', help="Watch for changes in `.py` files and regenerate schema file automatically."),
     lang: str = typer.Option(None, '--lang', '-l', help="Output language ('json', 'kotlin', 'kt', 'typescript', 'ts') (default: autodetected from output path)"),
     package_name: str = typer.Option('com.example.app', '--package-name', '-p', help="Package name (required for Kotlin)")
 ):
     lang, output = calculate_language(lang, output)
+
+    is_schema = Path(source).exists()
+    if is_schema:
+        source = Path(source)
 
     if watch:
         import watchfiles
@@ -379,109 +383,88 @@ def generate(
 
         run_subprocess()
 
-        for changes in watchfiles.watch(cwd):
-            if any(f.endswith('.py') for _, f in changes):
+        for changes in watchfiles.watch(source if is_schema else cwd):
+            if (is_schema and any(Path(f) == source for _, f in changes)) or (any(f.endswith('.py') for _, f in changes)):
                 typer.secho("Detected changes, regenerating...")
                 run_subprocess()
 
         return
 
-    ephaptic = load_ephaptic(client)
+    if is_schema:
+        schema_output = json.loads(source.read_text())
+    else:
+        ephaptic = load_ephaptic(source)
 
-    schema_output = {
-        "methods": {},
-        "events": {},
-        "definitions": {},
-    }
-
-    log(typer.style("--- Functions ---"))
-
-    for name, func in ephaptic._exposed_functions.items():
-        log(typer.style(f"  - {name}"))
-
-        meta = getattr(func, META_KEY, {})
-
-        hints = meta.get('hints') or typing.get_type_hints(func)
-        sig = meta.get('sig') or inspect.signature(func)
-
-        method_schema = {
-            "args": {},
-            "return": None,
-            "required": [],
+        schema_output = {
+            "methods": {},
+            "events": {},
+            "definitions": {},
         }
 
-        for param_name, param in sig.parameters.items():
-            hint = hints.get(param_name, typing.Any)
-            adapter = TypeAdapter(hint)
+        log(typer.style("--- Functions ---"))
 
-            method_schema["args"][param_name] = create_schema(
+        for name, func in ephaptic._exposed_functions.items():
+            log(typer.style(f"  - {name}"))
+
+            meta = getattr(func, META_KEY, {})
+
+            hints = meta.get('hints') or typing.get_type_hints(func)
+            sig = meta.get('sig') or inspect.signature(func)
+
+            method_schema = {
+                "args": {},
+                "return": None,
+                "required": [],
+            }
+
+            for param_name, param in sig.parameters.items():
+                hint = hints.get(param_name, typing.Any)
+                adapter = TypeAdapter(hint)
+
+                method_schema["args"][param_name] = create_schema(
+                    adapter,
+                    schema_output["definitions"],
+                )
+
+                log(typer.style(f"    - {param_name}: {hint} = {param.default}"))
+
+                if param.default == inspect.Parameter.empty:
+                    method_schema["required"].append(param_name)
+                else:
+                    method_schema["args"][param_name]["default"] = str(param.default)
+
+                
+
+            return_hint = meta.get('response_model') or hints.get("return", typing.Any)
+            if return_hint and return_hint is not type(None):
+                adapter = TypeAdapter(return_hint)
+                method_schema["return"] = create_schema(
+                    adapter,
+                    schema_output["definitions"],
+                )
+
+            schema_output["methods"][name] = method_schema
+
+        log(typer.style("--- Events ---"))
+
+
+        for name, model in ephaptic._exposed_events.items():
+            log(typer.style(f"  - {name}"))
+            adapter = TypeAdapter(model)
+
+            schema_output["events"][name] = create_schema(
                 adapter,
                 schema_output["definitions"],
             )
-
-            log(typer.style(f"    - {param_name}: {hint} = {param.default}"))
-
-            if param.default == inspect.Parameter.empty:
-                method_schema["required"].append(param_name)
-            else:
-                method_schema["args"][param_name]["default"] = str(param.default)
-
-            
-
-        return_hint = meta.get('response_model') or hints.get("return", typing.Any)
-        if return_hint and return_hint is not type(None):
-            adapter = TypeAdapter(return_hint)
-            method_schema["return"] = create_schema(
-                adapter,
-                schema_output["definitions"],
-            )
-
-        schema_output["methods"][name] = method_schema
-
-    log(typer.style("--- Events ---"))
-
-
-    for name, model in ephaptic._exposed_events.items():
-        log(typer.style(f"  - {name}"))
-        adapter = TypeAdapter(model)
-
-        schema_output["events"][name] = create_schema(
-            adapter,
-            schema_output["definitions"],
-        )
-
-    generate_output(lang, schema_output, package_name, output)
-
-@app.command()
-def from_schema(
-    schema_path: Path = typer.Option('schema.json', help="Path to the schema file."),
-    output: Path = typer.Option(None, '--output', '-o', help="Output path for the generated file (default: ephaptic.d.ts / Ephaptic.kt)."),
-    watch: bool = typer.Option(False, '--watch', '-w', help="Watch for changes in `.py` files and regenerate schema file automatically."),
-    lang: str = typer.Option(None, '--lang', '-l', help="Output language ('kotlin', 'kt', 'typescript', 'ts') (default: autodetected from output path)"),
-    package_name: str = typer.Option('com.example.app', '--package-name', '-p', help="Package name (required for Kotlin)")
-):
-    lang, output = calculate_language(lang, output)
-
-
-    if watch:
-        import watchfiles
-        
-        typer.secho(f"Watching for changes ({schema_path})...",  fg=typer.colors.GREEN)
-
-        run_subprocess()
-
-        for changes in watchfiles.watch(schema_path):
-            if any(Path(f).name == schema_path.name for _, f in changes):
-                typer.secho("Detected changes, regenerating...")
-                run_subprocess()
-
-        return
-    
-    schema_output = json.loads(schema_path.read_text())
 
     generate_output(lang, schema_output, package_name, output)
 
 click = typer.main.get_command(app)
+
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context):
+    if ctx.invoked_subcommand is None:
+        ctx.invoke(generate)
 
 if __name__ == "__main__":
     app()
