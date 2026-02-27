@@ -51,3 +51,5 @@ Now, scale this to **User B** being logged in on their phone, tablet, and laptop
 When **User A** sends another message, **Node 4** immediately picks up the **User B** connected to its own node, and broadcasts the message to the phone. It then broadcasts the message via Redis, and **Nodes 9 & 18** receive the message (the others ignore it). From here, **Nodes 9 & 18** both see they have an active connection to **User B**, and broadcast the message. Now, **User B**'s tablet and laptop also receive the message instantly.
 
 What about a group chat? Imagine Users **C** and **D** join. When **User A** sends a message, the backend now sends the <event> to <**User B** & **User C** & **User D**>. The flow is the same. The message gets sent out via Redis, and this time the servers check if they have **B**, **C**, or **D** connected. If so, they send the event over the transport.
+
+Redis is also used for the ratelimiter integrated in the Router.

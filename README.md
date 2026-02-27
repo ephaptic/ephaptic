@@ -38,6 +38,8 @@ Nah, just kidding. It's an RPC framework.
 
 What are you waiting for? **Let's go.**
 
+<h5>To see why you might want to use Ephaptic instead of traditional REST, see the <a href="https://ephaptic.github.io/ephaptic/advanced/replacing-rest">article</a> on it.</h5>
+
 <details>
     <summary>Python</summary>
     
@@ -179,6 +181,8 @@ const client = connect(...);
 See more in the [docs](https://ephaptic.github.io/ephaptic/tutorial).
 
 ## [License](https://github.com/ephaptic/ephaptic/blob/main/LICENSE)
+
+[MIT](https://github.com/ephaptic/ephaptic/blob/main/LICENSE)
 
 ---
 

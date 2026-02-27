@@ -12,6 +12,7 @@ It comes with the following benefits:
 - Functions exposed via the Router will show up in the FastAPI-generated `openapi.json`, meaning Ephaptic routes will even show up, fully typed, in your Swagger UI.
 - You only need to define your identity loader (ephaptic) and your http identity loader (you are passed a `fastapi.Request` object as context) once, then they are both selectively used and stored as the `active_user()`.
 - For specific logic, you can use `ephaptic.ctx.is_http()` and `ephaptic.ctx.is_rpc()` within your functions. Instead of defining two almost duplicated functions for RPC-specific and HTTP-specific logic, you can put them under one function and then use these in an if-statement to branch out your logic.
+- There are built in Quality-Of-Life features like a ratelimiter that works both with FastAPI and Ephaptic.
 
 But how do you use it?
 
