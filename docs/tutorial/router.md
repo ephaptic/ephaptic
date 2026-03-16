@@ -64,3 +64,13 @@ app.include_router(router)
 ```
 
 Now, you can run this app, and send both authenticated and unauthenticated requests via a HTTP client and an Ephaptic client, and verify they work as intended. You can even go to `/docs` and see the echo function there!
+
+!!! tip
+    If you want to use a Router without passing the `Ephaptic` instance initially, e.g. in a separate file, you can do so by later binding before you include the router:
+    
+    ```python
+    router = Router() # you don't need any arguments
+
+    router.bind(ephaptic) # bind it to an ephaptic instance before using it
+    app.include_router(router)
+    ```
