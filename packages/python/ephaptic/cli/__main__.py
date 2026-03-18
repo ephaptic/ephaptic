@@ -350,8 +350,9 @@ def generate_output(lang, schema_output, package_name, output: Path):
     if output.exists():
         if output.read_text() == content:
             return
-        else:
-            output.write_text(content)
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(content)
 
     for line in LOG:
         typer.echo(line)
