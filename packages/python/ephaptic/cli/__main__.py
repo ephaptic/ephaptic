@@ -79,7 +79,7 @@ def TS_resolve_type(schema: Dict[str, Any]) -> str:
     if schema.get('$ref'): return validate(schema['$ref'].split('/').pop() or 'any')
     if schema.get('enum'): return ' | '.join([json.dumps(val) for val in schema['enum']])
     if schema.get('anyOf'): return ' | '.join({TS_resolve_type(s) for s in schema['anyOf']})
-    if schema.get('type') == 'array': return f"{TS_resolve_type(schema['items']) if schema.get('items') else 'any'}[]"
+    if schema.get('type') == 'array': return f"({TS_resolve_type(schema['items']) if schema.get('items') else 'any'})[]"
     if schema.get('type') in ('integer', 'number'): return 'number'
     if schema.get('type') == 'boolean': return 'boolean'
     if schema.get('type') == 'string': return 'string'
