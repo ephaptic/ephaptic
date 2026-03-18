@@ -76,6 +76,7 @@ def load_ephaptic(import_name: str) -> Ephaptic:
 
 def TS_resolve_type(schema: Dict[str, Any]) -> str:
     if not schema: return 'any'
+    if schema.get('const'): return json.dumps(schema['const'])
     if schema.get('$ref'): return validate(schema['$ref'].split('/').pop() or 'any')
     if schema.get('enum'): return ' | '.join([json.dumps(val) for val in schema['enum']])
     if schema.get('anyOf'): return ' | '.join({TS_resolve_type(s) for s in schema['anyOf']})
@@ -189,6 +190,12 @@ def TS_generate(data: dict):
 
 def KT_resolve_type(schema: Dict[str, Any]) -> str:
     if not schema: return 'Any?'
+    if schema.get('const'):
+        val = schema['const']
+        if isinstance(val, str): return 'String'
+        if isinstance(val, bool): return 'Boolean'
+        if isinstance(val, int): return 'Long'
+        if isinstance(val, float): return 'Double'
     if schema.get('$ref'): return validate(schema['$ref'].split('/').pop() or 'Any')
     if schema.get('enum') and len(schema['enum']) > 0:
         first = schema['enum'][0]
