@@ -455,26 +455,26 @@ def generate(
 
                 
 
-        return_hint = meta.get('response_model') or hints.get("return", typing.Any)
-    
-        stream = False
-        origin = typing.get_origin(return_hint)
-        origin_name = getattr(origin, '__name__', '')
-        if origin in (typing.AsyncGenerator, typing.Generator, typing.AsyncIterable, typing.Iterable) or origin_name in ('AsyncGenerator', 'Generator', 'AsyncIterable', 'Iterable'):
-            stream = True
-            type_ = typing.get_args(return_hint)
-            return_hint = type_[0] if type_ else typing.Any
+            return_hint = meta.get('response_model') or hints.get("return", typing.Any)
+        
+            stream = False
+            origin = typing.get_origin(return_hint)
+            origin_name = getattr(origin, '__name__', '')
+            if origin in (typing.AsyncGenerator, typing.Generator, typing.AsyncIterable, typing.Iterable) or origin_name in ('AsyncGenerator', 'Generator', 'AsyncIterable', 'Iterable'):
+                stream = True
+                type_ = typing.get_args(return_hint)
+                return_hint = type_[0] if type_ else typing.Any
 
-        method_schema['stream'] = stream
+            method_schema['stream'] = stream
 
-        if return_hint and return_hint is not type(None) and return_hint is not typing.Any:
-            adapter = TypeAdapter(return_hint)
-            method_schema["return"] = create_schema(
-                adapter,
-                schema_output["definitions"],
-            )
+            if return_hint and return_hint is not type(None) and return_hint is not typing.Any:
+                adapter = TypeAdapter(return_hint)
+                method_schema["return"] = create_schema(
+                    adapter,
+                    schema_output["definitions"],
+                )
 
-            schema_output["methods"][name] = method_schema
+                schema_output["methods"][name] = method_schema
 
         log(typer.style("--- Events ---"))
 
