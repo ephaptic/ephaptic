@@ -78,6 +78,7 @@ nav:
     - Redis Diagram: diagram.md
     - TanStack Query Integration: advanced/tanstack.md
     - The CLI: advanced/cli.md
+    - Replacing Rest: advanced/replacing-rest.md
 
 extra_css:
   - stylesheets/extra.css

@@ -114,7 +114,7 @@ Now, run `docker compose up --build` and head to [localhost:80](http://localhost
 
 Congrats! We've got a production-ready ephaptic working!
 
-Well, not fully yet. We still need Redis for horizontal scaling (multiple workers), if you are using the [identity loading](../tutorial/security.md) feature.
+Well, not fully yet. We still need Redis for horizontal scaling (multiple workers), if you are using the [identity loading](../tutorial/security.md) feature or Router ratelimiting.
 
 ## Redis
 

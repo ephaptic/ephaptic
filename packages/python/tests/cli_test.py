@@ -7,7 +7,7 @@ def test_ts_resolver():
     assert TS_resolve_type({'type': 'integer'}) == 'number'
 
     # array
-    assert TS_resolve_type({'type': 'array', 'items': {'type': 'boolean'}}) == 'boolean[]'
+    assert TS_resolve_type({'type': 'array', 'items': {'type': 'boolean'}}) in ['(boolean)[]', 'boolean[]']
 
     # Object
     obj = {

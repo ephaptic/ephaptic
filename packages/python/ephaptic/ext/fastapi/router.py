@@ -3,15 +3,18 @@ from functools import wraps
 import inspect
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from ...ephaptic import Ephaptic, RatelimitExceededException
+from ...ephaptic import Ephaptic, RatelimitExceededException, expose
 from ...ctx import is_http, is_rpc, active_user
 from ...utils import parse_limit
 
 class Router(APIRouter):
-    ephaptic: Ephaptic
+    ephaptic: Optional[Ephaptic]
 
-    def __init__(self, ephaptic: Ephaptic, *args, **kwargs):
+    def __init__(self, ephaptic: Optional[Ephaptic] = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.ephaptic = ephaptic
+
+    def bind(self, ephaptic: Ephaptic):
         self.ephaptic = ephaptic
 
     def _register(
@@ -27,6 +30,8 @@ class Router(APIRouter):
 
         async def http_rl_dep(req: Request):
             if limit_config:
+                if not self.ephaptic:
+                    raise RuntimeError(f"Router for {path} is not bound to an Ephaptic instance. You must either call `.bind(ephaptic)`, or pass the `ephaptic` instance when constructing the Router.")
                 try:
                     await self.ephaptic._check_ratelimit(
                         func.__name__,
@@ -40,6 +45,9 @@ class Router(APIRouter):
         async def wrapper(*args, **kwargs):
             if auth and active_user() is None:
                 raise Exception('Unauthorized') if is_rpc() else HTTPException(status_code=401, detail='Unauthorized')
+
+            if not self.ephaptic:
+                raise RuntimeError(f"Router for {path} is not bound to an Ephaptic instance. You must either call `.bind(ephaptic)`, or pass the `ephaptic` instance when constructing the Router.")
             
             return await self.ephaptic._async(func)(*args, **kwargs)
         
@@ -54,7 +62,7 @@ class Router(APIRouter):
             **kwargs,
         )
 
-        self.ephaptic.expose(
+        (self.ephaptic.expose if self.ephaptic else expose)(
             name=func.__name__,
             rate_limit=limit,
             hints=get_type_hints(func),

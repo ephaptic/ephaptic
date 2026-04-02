@@ -12,6 +12,7 @@ It comes with the following benefits:
 - Functions exposed via the Router will show up in the FastAPI-generated `openapi.json`, meaning Ephaptic routes will even show up, fully typed, in your Swagger UI.
 - You only need to define your identity loader (ephaptic) and your http identity loader (you are passed a `fastapi.Request` object as context) once, then they are both selectively used and stored as the `active_user()`.
 - For specific logic, you can use `ephaptic.ctx.is_http()` and `ephaptic.ctx.is_rpc()` within your functions. Instead of defining two almost duplicated functions for RPC-specific and HTTP-specific logic, you can put them under one function and then use these in an if-statement to branch out your logic.
+- There are built in Quality-Of-Life features like a ratelimiter that works both with FastAPI and Ephaptic.
 
 But how do you use it?
 
@@ -63,3 +64,13 @@ app.include_router(router)
 ```
 
 Now, you can run this app, and send both authenticated and unauthenticated requests via a HTTP client and an Ephaptic client, and verify they work as intended. You can even go to `/docs` and see the echo function there!
+
+!!! tip
+    If you want to use a Router without passing the `Ephaptic` instance initially, e.g. in a separate file, you can do so by later binding before you include the router:
+    
+    ```python
+    router = Router() # you don't need any arguments
+
+    router.bind(ephaptic) # bind it to an ephaptic instance before using it
+    app.include_router(router)
+    ```
