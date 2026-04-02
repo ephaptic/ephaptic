@@ -1,4 +1,5 @@
 import { encode, decode } from "@msgpack/msgpack";
+import { AsyncQueue } from "./queue";
 
 interface PydanticErrorDetail {
     loc: (string | number)[];
@@ -30,12 +31,19 @@ class EphapticError extends Error {
 interface ValidationError extends RpcError {
     code: 'VALIDATION_ERROR';
     data: PydanticErrorDetail[];
-}
+} // Why did we even define this?
+// Could we do this?
+//     if (error.code === 'VALIDATION_ERROR') {
+// and TypeScript would pick it up with Pydantic error details? I assume not.
+// We will have to fix this when we figure out error handling (ephaptic.py:394)
 
 interface RpcResponse {
     id: number,
     result?: any,
     error?: string | RpcError,
+    chunk?: any,
+    done?: boolean,
+    stream?: boolean,
 }
 
 interface ServerEvent {
@@ -54,7 +62,8 @@ interface PendingCall {
 }
 
 function isRpcResponse(data: any): data is RpcResponse {
-    return data && typeof data === 'object' && 'id' in data && ('result' in data || 'error' in data);
+    return data && typeof data === 'object' && 'id' in data &&
+        ('result' in data || 'error' in data || 'chunk' in data || 'done' in data || 'stream' in data);
 }
 
 function isServerEvent(data: any): data is ServerEvent {
@@ -114,6 +123,7 @@ export class EphapticClientBase extends EventTarget {
     pendingCalls: Map<number, PendingCall> = new Map();
     _emitter: Map<string, Set<Function>> = new Map();
     _connectionPromise?: Promise<void> | null;
+    _pendingStreams: Map<number, AsyncQueue<any>> = new Map();
     retryCount: number = 0;
 
     constructor(options: EphapticOptions = {}) {
@@ -186,7 +196,26 @@ export class EphapticClientBase extends EventTarget {
             const data = decode(event.data);
 
             if (isRpcResponse(data)) {
-                if (this.pendingCalls.has(data.id)) {
+                if (data.stream) {
+                    const queue = new AsyncQueue<any>();
+                    this._pendingStreams.set(data.id, queue);
+
+                    const handlers = this.pendingCalls.get(data.id);
+                    if (handlers) {
+                        clearTimeout(handlers.timer);
+                        handlers.resolve(queue);
+                        this.pendingCalls.delete(data.id);
+                    }
+                } else if ('chunk' in data) {
+                    const streamHandler = this._pendingStreams.get(data.id);
+                    if (!streamHandler) return console.warn(`Server sent chunk data for nonexistent stream ID: ${data.id}. Ignoring.`);
+                    streamHandler.push(data.chunk);
+                } else if ('done' in data && data.done === true) {
+                    const streamHandler = this._pendingStreams.get(data.id);
+                    if (!streamHandler) return console.warn(`Server sent chunk completion for nonexistent stream ID: ${data.id}. Ignoring.`);
+                    streamHandler.close();
+                    this._pendingStreams.delete(data.id);
+                } else if (this.pendingCalls.has(data.id)) {
                     const handlers = this.pendingCalls.get(data.id);
                     if (handlers) {
                         const { resolve, reject, timer } = handlers;
@@ -195,6 +224,8 @@ export class EphapticClientBase extends EventTarget {
                         else resolve(data.result);
                         this.pendingCalls.delete(data.id);
                     }
+                } else {
+                    console.warn(`Server sent rpc response for nonexistent call ID: ${data.id}. Ignoring.`);
                 }
             } else if (isServerEvent(data)) {
                 const { args = [], kwargs = {} } = data.payload || {};
@@ -271,6 +302,9 @@ export class EphapticClientBase extends EventTarget {
      * Usage: await portal.my_function(arg1, arg2);
      */
     [methodName: string]: ((...args: any[]) => Promise<any>) | any;
+    // We probably have to remove this for TypeScript users to stop them from mistyping function names and TypeScript accepting it.
+    // Since this is only used for those who are using TypeScript but not using the generated schema.
+    // TODO: Do something about this.
 }
 
 /**
@@ -309,9 +343,15 @@ export function connect(options?: EphapticOptions) {
                 return new Promise((resolve, reject) => {
                     const id = ++target.callId;
                     const timeoutDuration = target.options?.timeout || 30000;
+
                     const timer = setTimeout(() => {
                         if (target.pendingCalls.has(id)) {
                             target.pendingCalls.delete(id);
+                            // if (target._pendingStreams.has(id)) {
+                            //     target._pendingStreams.get(id).close();
+                            //     target._pendingStreams.delete(id);
+                            // }
+                            // I think it's best to not time out streams, they should be allowed to be long-running.
                             reject(new Error(`${prop} timed out; exceeded ${timeoutDuration}ms.`));
                         }
                     }, timeoutDuration);

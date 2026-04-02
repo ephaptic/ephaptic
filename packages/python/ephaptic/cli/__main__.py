@@ -145,6 +145,10 @@ def TS_generate(data: dict):
         
         return_type = TS_resolve_type(method_data['return']) if method_data.get('return') else 'void'
 
+        stream = method_data.get('stream', False)
+        if stream:
+            return_type = f'AsyncIterableIterator<{return_type}>'
+
         lines.append(f"  {validate(method_name)}({', '.join(args)}): Promise<{return_type}>;")
 
     lines.append('')
@@ -279,9 +283,17 @@ def KT_generate(data: dict, package_name: str):
 
         return_type = KT_resolve_type(method_data['return']) if method_data.get('return') else 'Any?'
 
-        lines.append(f" suspend fun {validate(method_name)}({', '.join(args)}): {return_type} {{")
-        lines.append(f'      return client.request<{return_type}>("{method_name}", {", ".join(params)})')
-        lines.append('  }')
+        stream = method_data.get('stream', False)
+
+        if stream:
+            lines.append(f" fun {validate(method_name)}({', '.join(args)}): kotlinx.coroutines.flow.Flow<{return_type}> {{")
+            # TODO: Add `stream` function to KT client.
+            lines.append(f'      return client.stream<{return_type}>("{method_name}", {", ".join(params)})')
+            lines.append('  }')
+        else:
+            lines.append(f" suspend fun {validate(method_name)}({', '.join(args)}): {return_type} {{")
+            lines.append(f'      return client.request<{return_type}>("{method_name}", {", ".join(params)})')
+            lines.append('  }')
         lines.append('')
 
     lines.append('}')
@@ -429,7 +441,18 @@ def generate(
             
 
         return_hint = meta.get('response_model') or hints.get("return", typing.Any)
-        if return_hint and return_hint is not type(None):
+
+        stream = False
+        origin = typing.get_origin(return_hint)
+        origin_name = getattr(origin, '__name__', '')
+        if origin in (typing.AsyncGenerator, typing.Generator, typing.AsyncIterable, typing.Iterable) or origin_name in ('AsyncGenerator', 'Generator', 'AsyncIterable', 'Iterable'):
+            stream = True
+            type_ = typing.get_args(return_hint)
+            return_hint = type_[0] if type_ else typing.Any
+
+        method_schema['stream'] = stream
+
+        if return_hint and return_hint is not type(None) and return_hint is not typing.Any:
             adapter = TypeAdapter(return_hint)
             method_schema["return"] = create_schema(
                 adapter,

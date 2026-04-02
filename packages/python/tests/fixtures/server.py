@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from ephaptic import Ephaptic, active_user
 from ephaptic.ctx import is_http, is_rpc
 from ephaptic.ext.fastapi import Router
-import pydantic, typing
+import pydantic, typing, asyncio, time
 import os
 
 app = FastAPI()
@@ -57,6 +57,19 @@ def get_uid() -> str:
 
 @ephaptic.expose(rate_limit='1/m') # 1 per minute
 async def spam_me() -> str: return 'ok'
+
+@ephaptic.expose
+async def async_generator() -> typing.AsyncGenerator[str, None]:
+    for message in ['Message A', 'Message B']:
+        await asyncio.sleep(1)
+        yield message
+
+@ephaptic.expose
+def sync_generator() -> typing.Generator[MyTestObject, None]:
+    for i, message in enumerate(['Message C', 'Message D']):
+        time.sleep(1)
+        yield MyTestObject(text=message, num=i)
+
 
 router = Router(ephaptic)
 

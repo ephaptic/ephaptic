@@ -137,6 +137,8 @@ class Ephaptic:
         async def wrapper(*args, **kwargs) -> Any:
             if inspect.iscoroutinefunction(func):
                 return await func(*args, **kwargs)
+            elif inspect.isasyncgenfunction(func) or inspect.isgeneratorfunction(func):
+                return func(*args, **kwargs)
             else:
                 return await asyncio.to_thread(func, *args, **kwargs)
         return wrapper
@@ -331,10 +333,92 @@ class Ephaptic:
                         token_user = _active_user_ctx.set(current_uid)
                         token_scope = _scope_ctx.set('rpc')
 
+                        def validate(payload, expected, adapter=None):
+                            if expected and expected is not inspect.Signature.empty and expected is not typing.Any:
+                                adapter = adapter or pydantic.TypeAdapter(expected)
+                                validated = adapter.validate_python(payload, from_attributes=True)
+                                return adapter.dump_python(validated, mode='json')
+                            elif isinstance(payload, pydantic.BaseModel):
+                                # incase dev returned basemodel and forgot to set return type
+                                return payload.model_dump(mode='json')
+                            else: return payload
+
                         try:
                             result = await self._async(target_func)(**final_arguments)
 
+                            is_async_gen = inspect.isasyncgen(result)
+                            is_sync_gen = inspect.isgenerator(result)
+
                             return_type = meta.get('response_model') or hints.get("return", typing.Any)
+
+                            if is_async_gen or is_sync_gen:
+                                origin = typing.get_origin(return_type)
+                                origin_name = getattr(origin, '__name__', '')
+                                if origin in (typing.AsyncGenerator, typing.Generator, typing.AsyncIterable, typing.Iterable) or origin_name in ('AsyncGenerator', 'Generator', 'AsyncIterable', 'Iterable'):
+                                    type_ = typing.get_args(return_type)[0] if typing.get_args(return_type) else typing.Any
+                                else: type_ = return_type
+
+                                if type_ and type_ is not inspect.Signature.empty and type_ is not typing.Any:
+                                    adapter = pydantic.TypeAdapter(type_)
+                                else: adapter = None
+
+                                try:
+                                    await transport.send(msgpack.dumps({
+                                        'id': call_id,
+                                        'stream': True,
+                                    }))
+
+                                    if is_async_gen:
+                                        async for chunk in result:
+                                            data = validate(chunk, type_)
+                                            await transport.send(msgpack.dumps({
+                                                'id': call_id,
+                                                'chunk': data,
+                                            }))
+                                    else:
+                                        while True:
+                                            # try:
+                                            #     chunk = await asyncio.to_thread(next, result)
+                                            # except StopIteration:
+                                            #     break
+
+                                            # can't do this becuz coroutines use StopIteration internally to signal completion
+                                            # and python panics, the await escapes the catch block
+
+                                            def next_(gen):
+                                                try:
+                                                    return next(gen), False
+                                                except StopIteration:
+                                                    return None, True
+                                            
+                                            chunk, done = await asyncio.to_thread(next_, result)
+                                            
+                                            if done: break
+
+                                            data = validate(chunk, type_)
+                                            await transport.send(msgpack.dumps({
+                                                'id': call_id,
+                                                'chunk': data,
+                                            }))
+                                    
+                                    await transport.send(msgpack.dumps({
+                                        'id': call_id,
+                                        'done': True,
+                                    }))
+
+                                except Transport.ConnectionClosed:
+                                    pass
+
+                                except Exception as e:
+                                    import traceback
+                                    traceback.print_exc()
+                                    await transport.send(msgpack.dumps({
+                                        'id': call_id,
+                                        'error': { # TODO: Upgrade this once we figure out error handling
+                                            'message': f"Error during stream: {e}"
+                                        }
+                                    }))
+
                             if return_type and return_type is not inspect.Signature.empty and return_type is not typing.Any:
                                 try:
                                     adapter = pydantic.TypeAdapter(return_type)
@@ -344,6 +428,7 @@ class Ephaptic:
                                     # Should we really treat this separately?
                                     # For input it's understandable, but for server responses it feels like a server issue.
                                     # Let's just return a RETURN_VALIDATION_ERROR and print the traceback.
+                                    # TODO: See 391
                                     import traceback
                                     traceback.print_exc()
                                     await transport.send(msgpack.dumps({
@@ -360,6 +445,7 @@ class Ephaptic:
 
                             await transport.send(msgpack.dumps({"id": call_id, "result": result}))
                         except Exception as e:
+                            # TODO: See 391
                             await transport.send(msgpack.dumps({"id": call_id, "error": str(e)}))
                         finally:
                             _active_transport_ctx.reset(token_transport)
@@ -369,7 +455,7 @@ class Ephaptic:
                         await transport.send(msgpack.dumps({
                             "id": call_id, 
                             "error": f"Function '{func_name}' not found."
-                        }))
+                        })) # TODO: See 391
         except (asyncio.CancelledError, Transport.ConnectionClosed):
             ...
         except Exception:

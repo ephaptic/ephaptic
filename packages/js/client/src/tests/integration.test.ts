@@ -82,4 +82,32 @@ describe('ephaptic (connected to actual server)', () => {
         expect(result.active_user).toBe('user123');
         expect(result.message).toBe('js-test')
     }, 15000);
+
+    it('should handle asynchronous streams', async () => {
+        const stream = await client.async_generator();
+        
+        let receivedChunks = [];
+
+        for await (const message of stream) {
+            receivedChunks.push(message);
+        }
+
+        expect(receivedChunks.length).toBe(2);
+        expect(receivedChunks[0]).toBe('Message A');
+        expect(receivedChunks[1]).toBe('Message B');
+    });
+
+    it('should handle synchronous streams', async () => {
+        const stream = await client.sync_generator();
+
+        let receivedChunks = [];
+
+        for await (const item of stream) {
+            receivedChunks.push(item);
+        }
+
+        expect(receivedChunks.length).toBe(2);
+        expect(receivedChunks[0].num).toBe(0);
+        expect(receivedChunks[1].num).toBe(1);
+    });
 });
