@@ -65,7 +65,7 @@ async def async_generator() -> typing.AsyncGenerator[str, None]:
         yield message
 
 @ephaptic.expose
-def sync_generator() -> typing.Generator[MyTestObject, None]:
+def sync_generator() -> typing.Generator[MyTestObject, None, None]:
     for i, message in enumerate(['Message C', 'Message D']):
         time.sleep(1)
         yield MyTestObject(text=message, num=i)
