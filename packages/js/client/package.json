@@ -1,6 +1,6 @@
 {
   "name": "@ephaptic/client",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "The universal JavaScript client for ephaptic.",
   "keywords": [
     "rpc"
