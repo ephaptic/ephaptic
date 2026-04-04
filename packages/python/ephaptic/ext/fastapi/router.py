@@ -54,6 +54,15 @@ class Router(APIRouter):
         deps = kwargs.pop('dependencies', [])
         if limit: deps.append(Depends(http_rl_dep))
 
+        hint = get_type_hints(func).get('return')
+        if hint:
+            origin = get_origin(hint)
+            origin_name = getattr(origin, '__name__', '')
+            if origin in (AsyncGenerator, Generator, AsyncIterable, Iterable) or origin_name in ('AsyncGenerator', 'Generator', 'AsyncIterable', 'Iterable'):
+                kwargs.setdefault('response_model', None)
+            # Fixes a bug where FastAPI attempts to turn the generator into a Pydantic model (and fails).
+
+
         self.add_api_route(
             path,
             wrapper,

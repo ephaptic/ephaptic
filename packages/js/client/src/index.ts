@@ -347,11 +347,10 @@ export function connect(options?: EphapticOptions) {
                     const timer = setTimeout(() => {
                         if (target.pendingCalls.has(id)) {
                             target.pendingCalls.delete(id);
-                            // if (target._pendingStreams.has(id)) {
-                            //     target._pendingStreams.get(id).close();
-                            //     target._pendingStreams.delete(id);
-                            // }
-                            // I think it's best to not time out streams, they should be allowed to be long-running.
+                            if (target._pendingStreams.has(id)) {
+                                target._pendingStreams.get(id).close();
+                                target._pendingStreams.delete(id);
+                            }
                             reject(new Error(`${prop} timed out; exceeded ${timeoutDuration}ms.`));
                         }
                     }, timeoutDuration);

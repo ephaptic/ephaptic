@@ -110,4 +110,32 @@ describe('ephaptic (connected to actual server)', () => {
         expect(receivedChunks[0].num).toBe(0);
         expect(receivedChunks[1].num).toBe(1);
     });
+
+    it('should handle asynchronous streams via router', async () => {
+        const stream = await client.r_async_generator();
+        
+        let receivedChunks = [];
+
+        for await (const message of stream) {
+            receivedChunks.push(message);
+        }
+
+        expect(receivedChunks.length).toBe(2);
+        expect(receivedChunks[0]).toBe('Message A');
+        expect(receivedChunks[1]).toBe('Message B');
+    });
+
+    it('should handle synchronous streams via router', async () => {
+        const stream = await client.r_sync_generator();
+
+        let receivedChunks = [];
+
+        for await (const item of stream) {
+            receivedChunks.push(item);
+        }
+
+        expect(receivedChunks.length).toBe(2);
+        expect(receivedChunks[0].num).toBe(0);
+        expect(receivedChunks[1].num).toBe(1);
+    });
 });

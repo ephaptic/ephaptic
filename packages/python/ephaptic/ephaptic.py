@@ -405,9 +405,10 @@ class Ephaptic:
                                         'id': call_id,
                                         'done': True,
                                     }))
+                                    continue
 
                                 except Transport.ConnectionClosed:
-                                    pass
+                                    continue
 
                                 except Exception as e:
                                     import traceback
@@ -418,8 +419,9 @@ class Ephaptic:
                                             'message': f"Error during stream: {e}"
                                         }
                                     }))
+                                    continue
 
-                            if return_type and return_type is not inspect.Signature.empty and return_type is not typing.Any:
+                            elif return_type and return_type is not inspect.Signature.empty and return_type is not typing.Any:
                                 try:
                                     adapter = pydantic.TypeAdapter(return_type)
                                     validated = adapter.validate_python(result, from_attributes=True)

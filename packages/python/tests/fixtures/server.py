@@ -82,6 +82,18 @@ def r_echo(message: str) -> dict:
         "message": message,
     }
 
+@router.get('/r_asyncgen')
+async def r_async_generator() -> typing.AsyncGenerator[str, None]:
+    for message in ['Message A', 'Message B']:
+        await asyncio.sleep(1)
+        yield message
+
+@router.get('/r_syncgen')
+def r_sync_generator() -> typing.Generator[MyTestObject, None, None]:
+    for i, message in enumerate(['Message C', 'Message D']):
+        time.sleep(1)
+        yield MyTestObject(text=message, num=i)
+
 app.include_router(router)
 
 if __name__ == "__main__":
