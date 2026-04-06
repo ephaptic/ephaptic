@@ -56,7 +56,8 @@ echo -e "${GREEN}JavaScript Unit Tests Passed.${NC}"
 cd - > /dev/null
 
 uvicorn $UVICORN_APP_PATH \
-  --port $TEST_PORT &
+  --port $TEST_PORT \
+  > /dev/null &
 SERVER_PID=$!
 
 echo -e "${YELLOW}Waiting for FastAPI server...${NC}"

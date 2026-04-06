@@ -6,14 +6,17 @@ import logging
 from typing import Callable, Any, Optional
 import inspect
 
+from .queue import AsyncQueue
+
 class EphapticClient:
     def __init__(self, url: str, auth = None):
         self.url = url
         self.auth = auth
         self.ws = None
         self._call_id = 0
-        self._pending_calls = {} # id -> asyncio.Future (asyncio.Future is a Python equivalent of a Promise)
-        self._event_handlers = {} # name: str -> Set(Callable)
+        self._pending_calls: dict[int, asyncio.Future] = {}
+        self._pending_streams: dict[int, AsyncQueue] = {}
+        self._event_handlers: dict[str, set[callable]] = {}
         self._listen_task = None
 
     def _async(self, func: Callable):
@@ -43,7 +46,25 @@ class EphapticClient:
 
                 if data.get('id') is not None:
                     call_id = data['id']
-                    if call_id in self._pending_calls:
+
+                    if data.get('stream'):
+                        stream = AsyncQueue()
+                        self._pending_streams[call_id] = stream
+
+                        if call_id in self._pending_calls:
+                            self._pending_calls[call_id].set_result(stream)
+                            del self._pending_calls[call_id]
+
+                    elif data.get('chunk'):
+                        if call_id in self._pending_streams:
+                            self._pending_streams[call_id].push(data['chunk'])
+
+                    elif data.get('done'):
+                        if call_id in self._pending_streams:
+                            self._pending_streams[call_id].close()
+                            del self._pending_streams[call_id]
+
+                    elif call_id in self._pending_calls:
                         future = self._pending_calls.pop(call_id)
                         if 'error' in data:
                             future.set_exception(Exception(data['error']))

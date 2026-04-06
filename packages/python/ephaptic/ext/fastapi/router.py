@@ -1,8 +1,12 @@
 from typing import *
 from functools import wraps
 import inspect
+import asyncio
+import json
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
+from fastapi.encoders import jsonable_encoder
 from ...ephaptic import Ephaptic, RatelimitExceededException, expose
 from ...ctx import is_http, is_rpc, active_user
 from ...utils import parse_limit
@@ -49,7 +53,31 @@ class Router(APIRouter):
             if not self.ephaptic:
                 raise RuntimeError(f"Router for {path} is not bound to an Ephaptic instance. You must either call `.bind(ephaptic)`, or pass the `ephaptic` instance when constructing the Router.")
             
-            return await self.ephaptic._async(func)(*args, **kwargs)
+            result = await self.ephaptic._async(func)(*args, **kwargs)
+
+            if is_http():
+                is_async_gen = inspect.isasyncgen(result)
+                is_sync_gen = inspect.isgenerator(result)
+
+                if is_async_gen or is_sync_gen:
+                    async def generator():
+                        if is_async_gen:
+                            async for chunk in result:
+                                yield json.dumps(jsonable_encoder(chunk)) + '\n'
+                            
+                        else:
+                            def next_(gen):
+                                try: return next(gen), False
+                                except StopIteration: return None, True
+
+                            while True:
+                                chunk, done = await asyncio.to_thread(next_, result)
+                                if done: break
+                                yield json.dumps(jsonable_encoder(chunk)) + '\n'
+
+                    return StreamingResponse(generator(), media_type='application/jsonl')
+                
+            return result
         
         deps = kwargs.pop('dependencies', [])
         if limit: deps.append(Depends(http_rl_dep))

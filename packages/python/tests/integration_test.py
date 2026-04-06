@@ -2,6 +2,7 @@ import pytest
 import asyncio
 import os
 import httpx
+import json
 
 from ephaptic import connect
 
@@ -77,6 +78,16 @@ async def test_typed_event_emission():
         pytest.fail("Did not receive 'MyTypedEvent' event within timeout.")
     finally:
         client.off("MyTypedEvent", event_handler)
+
+@pytest.mark.asyncio
+async def test_rpc_stream_functions():
+    client = await connect(SERVER_URL)
+
+    stream = await client.async_generator()
+
+    async for item in stream:
+        assert isinstance(item, str)
+        assert item.startswith('Message ')
     
 
 @pytest.mark.asyncio
@@ -102,6 +113,40 @@ async def test_router_http_access():
         assert result['is_http'] == True
         assert result['active_user'] == 'user123'
         assert result['message'] == 'hello'
+
+@pytest.mark.asyncio
+async def test_router_http_jsonl():
+    async with httpx.AsyncClient(base_url=HTTP_SERVER_URL) as client:
+        
+        async with client.stream("GET", "/r_asyncgen") as resp:
+            assert resp.status_code == 200
+            assert resp.headers["content-type"] == "application/jsonl"
+
+            received_lines = []
+            async for line in resp.aiter_lines():
+                if line.strip():
+                    received_lines.append(json.loads(line))
+
+            assert len(received_lines) == 2
+            assert received_lines[0] == "Message A"
+            assert received_lines[1] == "Message B"
+
+        async with client.stream("GET", "/r_syncgen") as resp:
+            assert resp.status_code == 200
+            assert resp.headers["content-type"] == "application/jsonl"
+
+            received_objects = []
+            async for line in resp.aiter_lines():
+                if line.strip():
+                    received_objects.append(json.loads(line))
+
+            assert len(received_objects) == 2
+            
+            assert received_objects[0]["text"] == "Message C"
+            assert received_objects[0]["num"] == 0
+            
+            assert received_objects[1]["text"] == "Message D"
+            assert received_objects[1]["num"] == 1
 
 @pytest.mark.asyncio
 async def test_router_functions_in_openapi():

@@ -35,7 +35,7 @@ interface ValidationError extends RpcError {
 // Could we do this?
 //     if (error.code === 'VALIDATION_ERROR') {
 // and TypeScript would pick it up with Pydantic error details? I assume not.
-// We will have to fix this when we figure out error handling (ephaptic.py:394)
+// TOdO: We will have to fix this when we figure out error handling (ephaptic.py:394)
 
 interface RpcResponse {
     id: number,
