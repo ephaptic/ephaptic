@@ -61,6 +61,7 @@ class Router(APIRouter):
 
                 if is_async_gen or is_sync_gen:
                     async def generator():
+                        # https://github.com/fastapi/fastapi/blob/c3c9dd6b1a08bcda766e7b43eafe72c4c5e9e193/fastapi/routing.py#L620-651
                         if is_async_gen:
                             async for chunk in result:
                                 yield json.dumps(jsonable_encoder(chunk)) + '\n'

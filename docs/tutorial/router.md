@@ -13,6 +13,9 @@ It comes with the following benefits:
 - You only need to define your identity loader (ephaptic) and your http identity loader (you are passed a `fastapi.Request` object as context) once, then they are both selectively used and stored as the `active_user()`.
 - For specific logic, you can use `ephaptic.ctx.is_http()` and `ephaptic.ctx.is_rpc()` within your functions. Instead of defining two almost duplicated functions for RPC-specific and HTTP-specific logic, you can put them under one function and then use these in an if-statement to branch out your logic.
 - There are built in Quality-Of-Life features like a ratelimiter that works both with FastAPI and Ephaptic.
+- You can even write streaming logic in both RPC and HTTP!
+    - Ephaptic uses the simple `for await (const x of stream) { ... }` syntax, while for HTTP it returns your objects in a JSONL SSE format. Works with OpenAPI also.
+    - For both formats you simply have to annotate response with `AsyncGenerator` / `Generator`, and `yield` each item.
 
 But how do you use it?
 
