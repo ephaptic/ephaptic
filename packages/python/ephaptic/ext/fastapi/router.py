@@ -45,52 +45,32 @@ class Router(APIRouter):
                 except RatelimitExceededException as e:
                     raise HTTPException(status_code=429, detail=str(e), headers={'X-Retry-After': e.retry_after})
 
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
+        def _pre():
             if auth and active_user() is None:
+                # TODO: Return a proper ServiceError when we implement better error handling
                 raise Exception('Unauthorized') if is_rpc() else HTTPException(status_code=401, detail='Unauthorized')
-
+            
             if not self.ephaptic:
                 raise RuntimeError(f"Router for {path} is not bound to an Ephaptic instance. You must either call `.bind(ephaptic)`, or pass the `ephaptic` instance when constructing the Router.")
-            
-            result = await self.ephaptic._async(func)(*args, **kwargs)
 
-            if is_http():
-                is_async_gen = inspect.isasyncgen(result)
-                is_sync_gen = inspect.isgenerator(result)
+        if (inspect.isasyncgenfunction(func) or inspect.isgeneratorfunction(func)):
+            @wraps(func)
+            async def wrapper(*args, **kwargs):
+                _pre()
+                if inspect.isasyncgenfunction(func):
+                    async for chunk in await self.ephaptic._async(func)(*args, **kwargs):
+                        yield chunk
+                elif inspect.isgeneratorfunction(func):
+                    for chunk in await self.ephaptic._async(func)(*args, **kwargs):
+                        yield chunk
+        else:
+            @wraps(func)
+            async def wrapper(*args, **kwargs):
+                _pre()
+                return await self.ephaptic._async(func)(*args, **kwargs)
 
-                if is_async_gen or is_sync_gen:
-                    async def generator():
-                        # https://github.com/fastapi/fastapi/blob/c3c9dd6b1a08bcda766e7b43eafe72c4c5e9e193/fastapi/routing.py#L620-651
-                        if is_async_gen:
-                            async for chunk in result:
-                                yield json.dumps(jsonable_encoder(chunk)) + '\n'
-                            
-                        else:
-                            def next_(gen):
-                                try: return next(gen), False
-                                except StopIteration: return None, True
-
-                            while True:
-                                chunk, done = await asyncio.to_thread(next_, result)
-                                if done: break
-                                yield json.dumps(jsonable_encoder(chunk)) + '\n'
-
-                    return StreamingResponse(generator(), media_type='application/jsonl')
-                
-            return result
-        
         deps = kwargs.pop('dependencies', [])
         if limit: deps.append(Depends(http_rl_dep))
-
-        hint = get_type_hints(func).get('return')
-        if hint:
-            origin = get_origin(hint)
-            origin_name = getattr(origin, '__name__', '')
-            if origin in (AsyncGenerator, Generator, AsyncIterable, Iterable) or origin_name in ('AsyncGenerator', 'Generator', 'AsyncIterable', 'Iterable'):
-                kwargs.setdefault('response_model', None)
-            # Fixes a bug where FastAPI attempts to turn the generator into a Pydantic model (and fails).
-
 
         self.add_api_route(
             path,

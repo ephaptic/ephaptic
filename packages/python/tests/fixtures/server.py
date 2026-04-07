@@ -45,6 +45,7 @@ async def emit_typed_event(value: int):
 class MyTestObject(pydantic.BaseModel):
     text: str
     num: typing.Optional[int] = None
+    default: str = "DEFAULT"
 
 @ephaptic.expose
 async def test_pydantic(test_object: MyTestObject) -> MyTestObject:
@@ -93,6 +94,18 @@ def r_sync_generator() -> typing.Generator[MyTestObject, None, None]:
     for i, message in enumerate(['Message C', 'Message D']):
         time.sleep(1)
         yield MyTestObject(text=message, num=i)
+
+class MyFakeTestObject: # Not a BaseModel
+    text: str
+    num = 0
+
+@router.get('/r_test_custom')
+async def r_test_custom() -> MyTestObject:
+    object = MyFakeTestObject()
+
+    object.text = 'Custom'
+
+    return object # Should return a mapped Pydantic version of the object, where object.default == "DEFAULT"
 
 app.include_router(router)
 

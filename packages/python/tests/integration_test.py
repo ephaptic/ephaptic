@@ -100,6 +100,26 @@ async def test_router_rpc_access():
     assert result['message'] == 'hello'
 
 @pytest.mark.asyncio
+async def test_custom_objects():
+    client = await connect(SERVER_URL)
+    result = await client.r_test_custom()
+
+    assert result['text'] == 'Custom'
+    assert result['num']  == 0
+    assert result['default'] == 'DEFAULT'
+
+    async with httpx.AsyncClient(base_url=HTTP_SERVER_URL) as client:
+        resp = await client.get('/r_test_custom')
+        assert resp.status_code == 200
+        result = resp.json()
+
+        # This is more of a FastAPI test than an Ephaptic test ngl
+
+        assert result['text'] == 'Custom'
+        assert result['num']  == 0
+        assert result['default'] == 'DEFAULT'
+
+@pytest.mark.asyncio
 async def test_router_http_access():
     async with httpx.AsyncClient(base_url=HTTP_SERVER_URL) as client:
         resp = await client.get('/r_echo', params={'message': 'hello'})
