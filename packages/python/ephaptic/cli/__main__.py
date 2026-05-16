@@ -474,7 +474,7 @@ def generate(
                     schema_output["definitions"],
                 )
 
-                schema_output["methods"][name] = method_schema
+            schema_output["methods"][name] = method_schema
 
         log(typer.style("--- Events ---"))
 
