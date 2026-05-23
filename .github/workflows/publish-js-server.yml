@@ -25,4 +25,4 @@ jobs:
 
       - name: Install dependencies and publish
         working-directory: ./packages/js/server
-        run: npm ci && npm publish --provenance --access-public
+        run: npm ci && npm publish --provenance --access public
