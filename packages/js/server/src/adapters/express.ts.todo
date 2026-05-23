@@ -1,0 +1,60 @@
+import type { Server } from 'http'; // TODO: Try to figure out why Cannot find name 'http'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig. // Even though I already did that. Oh wait. Maybe  because Option 'moduleResolution=node10' is deprecated and will stop functioning in TypeScript 7.0. Specify compilerOption '"ignoreDeprecations": "6.0"' to silence this error.
+import { WebSocketServer } from 'ws';
+import { encode, decode } from '@msgpack/msgpack';
+import type { Routes } from '../ephaptic.js';
+import { Worker } from 'worker_threads'; // TODO: Remove this dependency because I don't think it's needed.
+
+import type { RpcResponse, PendingCall } from '../../../client/src/index.js';
+// TODO: File 'ephaptic/packages/js/client/src/index.ts' is not under 'rootDir' 'ephaptic/packages/js/server/src'. 'rootDir' is expected to contain all source files.
+// So we have to put this interfaces somewhere so that they are not duplicated but allowing them to be in separate packages @ephaptic/client and @ephaptic/server
+
+// TODO: Put this into a Transport class that just sends messages on each message.
+// And then put this actual action loop into `ephaptic.ts` as part of the core.
+
+export function attachWebSockets<T extends Routes>(server: Server, routes: T, path = '/_ephaptic'): T {
+    const wss = new WebSocketServer({ server, path });
+
+    wss.on('connection', ws => {
+        ws.on('message', async raw => {
+            try {
+                const data = decode(raw) as PendingCall; // It could be also an init package which we do not currently handle.
+
+                // TODO: Implement server-sent events. Which is another whole thing.
+
+                // TODO: Implement `init` field handling, with auth handling.
+
+                if (data.type === 'rpc') {
+                    const { id, name, args = [] } = data;
+
+                    if (name in routes) {
+                        const target = routes[name];
+                        // TODO: Implement Ratelimiting from `meta` key.
+                        try {
+                            const result = target.constructor.name === 'AsyncFunction' 
+                                ? await target(...args)
+                                : await new Promise((resolve, reject) => {
+                                    const worker = new Worker('./worker.js');
+                                    worker.on('message', resolve);
+                                    worker.on('error', reject);
+                                    worker.postMessage({ fn: target.toString(), args });
+                                  });
+                            // TODO: Refactor this into a utility function and wonder whether I have to make a file `./worker.js`.
+                            ws.send(encode({ id, result } as RpcResponse));
+                            // TODO: Handle streams.
+                        } catch (err: any) {
+                            // TODO: See line 391 of Python client.
+                            ws.send(encode({ id, error: err.message || err.toString() } as RpcResponse));
+                        }
+                    } else {
+                        ws.send(encode({ id, error: `Function '${name}' not found.` } as RpcResponse));
+                        // TODO: See line 391 of Python client.
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+            } // finally { /* Disconnect the current user from the transport. Wait... that's not in this message loop though that's in the outer WS loop. */ }
+        });
+    });
+
+    return routes;
+}

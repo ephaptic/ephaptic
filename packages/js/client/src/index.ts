@@ -1,6 +1,14 @@
 import { encode, decode } from "@msgpack/msgpack";
 import { AsyncQueue } from "./queue";
 
+declare global {
+    interface Window {
+        __ephaptic?: {
+            invoke(channel: string, ...args: any[]): Promise<any>;
+        };
+    }
+}
+
 interface PydanticErrorDetail {
     loc: (string | number)[];
     msg: string;
@@ -35,9 +43,9 @@ interface ValidationError extends RpcError {
 // Could we do this?
 //     if (error.code === 'VALIDATION_ERROR') {
 // and TypeScript would pick it up with Pydantic error details? I assume not.
-// TOdO: We will have to fix this when we figure out error handling (ephaptic.py:394)
+// TODO: We will have to fix this when we figure out error handling (ephaptic.py:394)
 
-interface RpcResponse {
+export interface RpcResponse {
     id: number,
     result?: any,
     error?: string | RpcError,
@@ -46,7 +54,7 @@ interface RpcResponse {
     stream?: boolean,
 }
 
-interface ServerEvent {
+export interface ServerEvent {
     type: 'event';
     name: string;
     payload?: {
@@ -55,7 +63,7 @@ interface ServerEvent {
     };
 }
 
-interface PendingCall {
+export interface PendingCall {
     resolve: (value: any) => void;
     reject: (reason?: any) => void;
     timer: ReturnType<typeof setTimeout>;
@@ -96,6 +104,12 @@ export interface EphapticOptions {
      * Default: 30000ms.
      */
     timeout?: number;
+
+    /**
+     * Transport you want to use.
+     * Either `websocket` or `electron` (uses electron IPC). 
+     */
+    transport?: 'websocket' | 'electron';
 }
 
 /**
@@ -130,7 +144,10 @@ export class EphapticClientBase extends EventTarget {
         super();
         this.options = options;
 
-        if (typeof window !== "undefined") this.connect();
+        const isElectron = typeof window !== 'undefined' && '__ephaptic' in window;
+        const transport: EphapticOptions['transport'] = options.transport || (isElectron && !options.url ? 'electron' : 'websocket');
+
+        if (typeof window !== "undefined" && transport === 'websocket') this.connect();
     }
 
     _getUrl() {
@@ -314,6 +331,9 @@ export class EphapticClientBase extends EventTarget {
 export function connect(options?: EphapticOptions) {
     const clientInstance = new EphapticClientBase(options);
 
+    const isElectron = typeof window !== 'undefined' && '__ephaptic' in window;
+    const transport: EphapticOptions['transport'] = options?.transport || (isElectron && !options?.url ? 'electron' : 'websocket');
+
     const clientProxy = new Proxy(clientInstance, {
         get(target: any, prop: string) {
             if (prop === 'queries') {
@@ -323,46 +343,53 @@ export function connect(options?: EphapticOptions) {
             if (prop in target) return target[prop];
 
             return async(...args: any[]) => {
-                if (!target.ws || target.ws.readyState !== WebSocket.OPEN) {
-                    target.connect();
-                    await new Promise<void>((resolve, reject) => {
-                        const onSuccess = () => { cleanup(); resolve(); };
-                        const onError = () => { cleanup(); reject(new Error("Failed to establish connection.")); };
+                if (transport === 'electron') {
+                    if (typeof window === 'undefined' || !window.__ephaptic) {
+                        throw new Error("ephaptic: Electron IPC not found on window.");
+                    }
+                    return await window.__ephaptic.invoke(prop, ...args);
+                } else if (transport === 'websocket') {
+                    if (!target.ws || target.ws.readyState !== WebSocket.OPEN) {
+                        target.connect();
+                        await new Promise<void>((resolve, reject) => {
+                            const onSuccess = () => { cleanup(); resolve(); };
+                            const onError = () => { cleanup(); reject(new Error("Failed to establish connection.")); };
 
-                        const cleanup = () => {
-                            target.removeEventListener('connected', onSuccess);
-                            target.removeEventListener('disconnected', onError);
-                        };
+                            const cleanup = () => {
+                                target.removeEventListener('connected', onSuccess);
+                                target.removeEventListener('disconnected', onError);
+                            };
 
-                        target.addEventListener('connected', onSuccess, { once: true });
-                        target.addEventListener('disconnected', onError);
+                            target.addEventListener('connected', onSuccess, { once: true });
+                            target.addEventListener('disconnected', onError);
+                        });
+                    }
+
+                    if (target._connectionPromise) await target._connectionPromise;
+                    return new Promise((resolve, reject) => {
+                        const id = ++target.callId;
+                        const timeoutDuration = target.options?.timeout || 30000;
+
+                        const timer = setTimeout(() => {
+                            if (target.pendingCalls.has(id)) {
+                                target.pendingCalls.delete(id);
+                                if (target._pendingStreams.has(id)) {
+                                    target._pendingStreams.get(id).close();
+                                    target._pendingStreams.delete(id);
+                                }
+                                reject(new Error(`${prop} timed out; exceeded ${timeoutDuration}ms.`));
+                            }
+                        }, timeoutDuration);
+                        target.pendingCalls.set(id, { resolve, reject, timer });
+                        try {
+                            target.ws.send(encode({ type: 'rpc', id, name: prop, args }));
+                        } catch (err) {
+                            clearTimeout(timer);
+                            target.pendingCalls.delete(id);
+                            reject(err);
+                        }
                     });
                 }
-
-                if (target._connectionPromise) await target._connectionPromise;
-                return new Promise((resolve, reject) => {
-                    const id = ++target.callId;
-                    const timeoutDuration = target.options?.timeout || 30000;
-
-                    const timer = setTimeout(() => {
-                        if (target.pendingCalls.has(id)) {
-                            target.pendingCalls.delete(id);
-                            if (target._pendingStreams.has(id)) {
-                                target._pendingStreams.get(id).close();
-                                target._pendingStreams.delete(id);
-                            }
-                            reject(new Error(`${prop} timed out; exceeded ${timeoutDuration}ms.`));
-                        }
-                    }, timeoutDuration);
-                    target.pendingCalls.set(id, { resolve, reject, timer });
-                    try {
-                        target.ws.send(encode({ type: 'rpc', id, name: prop, args }));
-                    } catch (err) {
-                        clearTimeout(timer);
-                        target.pendingCalls.delete(id);
-                        reject(err);
-                    }
-                })
             }
         }
     });

@@ -1,7 +1,7 @@
 {
   "name": "@ephaptic/client",
-  "version": "0.2.1",
-  "description": "The universal JavaScript client for ephaptic.",
+  "version": "0.3.0",
+  "description": "The universal JavaScript/TypeScript client for ephaptic.",
   "keywords": [
     "rpc"
   ],
@@ -39,6 +39,6 @@
     "vitest": "^1.6.0"
   },
   "dependencies": {
-    "@msgpack/msgpack": "^3.1.2"
+    "@msgpack/msgpack": "^3.1.3"
   }
 }

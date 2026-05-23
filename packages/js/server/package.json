@@ -1,0 +1,73 @@
+{
+  "name": "@ephaptic/server",
+  "version": "0.1.0",
+  "description": "The universal JavaScript/TypeScript server for ephaptic.",
+  "keywords": [
+    "rpc"
+  ],
+  "homepage": "https://github.com/ephaptic/ephaptic#readme",
+  "bugs": {
+    "url": "https://github.com/ephaptic/ephaptic/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ephaptic/ephaptic.git"
+  },
+  "license": "MIT",
+  "author": "ephaptic",
+  "type": "module",
+  "main": "dist/ephaptic.cjs",
+  "module": "dist/ephaptic.js",
+  "unpkg": "dist/ephaptic.umd.cjs",
+  "jsdelivr": "dist/ephaptic.umd.cjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "echo 'No test specified.'",
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@types/ws": "^8.18.1",
+    "electron": "^42.2.0",
+    "express": "^5.2.1",
+    "typescript": "^5.9.3",
+    "ws": "^8.20.1"
+  },
+  "peerDependencies": {
+    "electron": "*",
+    "express": "*",
+    "ws": "*"
+  },
+  "peerDependenciesMeta": {
+    "electron": {
+      "optional": true
+    },
+    "express": {
+      "optional": true
+    },
+    "ws": {
+      "optional": true
+    }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./electron": {
+      "types": "./dist/adapters/electron.d.ts",
+      "import": "./dist/adapters/electron.js"
+    },
+    "./electron/preload": {
+      "types": "./dist/adapters/preload.d.ts",
+      "import": "./dist/adapters/preload.js"
+    }
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "^3.1.3"
+  }
+}
