@@ -1,6 +1,5 @@
 import asyncio
 import warnings
-import msgpack
 import redis.asyncio as redis
 import pydantic
 import time
@@ -9,6 +8,7 @@ from contextvars import ContextVar
 from .localproxy import LocalProxy
 
 from .transports import Transport
+from .encodings.msgpack import MsgpackEncoding
 
 from .decorators import META_KEY, Expose, Event, IdentityLoader
 
@@ -21,6 +21,8 @@ import inspect
 CHANNEL_NAME = "ephaptic:broadcast"
 
 F = typing.TypeVar('F', bound=Callable[..., Any])
+
+encoding = MsgpackEncoding()
 
 class ConnectionManager:
     def __init__(self):
@@ -40,7 +42,7 @@ class ConnectionManager:
             if not self.active[user_id]: del self.active[user_id]
 
     async def broadcast(self, user_ids: List[str], event_name: str, args: list, kwargs: dict):
-        payload = msgpack.dumps({
+        payload = encoding.encode({
             "target_users": user_ids,
             "type": "event",
             "name": event_name,
@@ -67,7 +69,7 @@ class ConnectionManager:
         await pubsub.subscribe(CHANNEL_NAME)
         async for message in pubsub.listen():
             if message['type'] == 'message':
-                data = msgpack.loads(message['data'])
+                data = encoding.decode(message['data'])
                 targets = data.get('target_users', [])
                 await self._send(targets, message['data'])
 
@@ -233,7 +235,7 @@ class Ephaptic:
         
         # NOTE: There is slight duplication here and in the EphapticTarget. Perhaps make these functions internally route to EphapticTargets but pass the transport to use?
         
-        await transport.send(msgpack.dumps({
+        await transport.send(encoding.encode({
             'type': 'event',
             'name': event_name,
             'payload': {'args': [], 'kwargs': payload}
@@ -243,7 +245,7 @@ class Ephaptic:
         current_uid = None
         try:
             raw = await transport.receive()
-            init = msgpack.loads(raw)
+            init = encoding.decode(raw)
 
             if init.get('type') == 'init':
                 try:
@@ -261,7 +263,7 @@ class Ephaptic:
 
             while True:
                 raw = await transport.receive()
-                data = msgpack.loads(raw)
+                data = encoding.decode(raw)
 
                 if data.get('type') == 'rpc':
                     call_id = data.get('id')
@@ -282,7 +284,7 @@ class Ephaptic:
                                     ip=transport.remote_addr,
                                 )
                             except RatelimitExceededException as e:
-                                await transport.send(msgpack.dumps({
+                                await transport.send(encoding.encode({
                                     "id": call_id,
                                     "error": {
                                         "code": "RATELIMIT",
@@ -300,7 +302,7 @@ class Ephaptic:
                             bound = sig.bind(*args, **kwargs)
                             bound.apply_defaults()
                         except TypeError as e:
-                            await transport.send(msgpack.dumps({"id": call_id, "error": str(e)}))
+                            await transport.send(encoding.encode({"id": call_id, "error": str(e)}))
                             continue
 
                         fields = {}
@@ -319,7 +321,7 @@ class Ephaptic:
                                 for field_name in DynamicInputModel.model_fields.keys()
                             }
                         except pydantic.ValidationError as e:
-                            await transport.send(msgpack.dumps({
+                            await transport.send(encoding.encode({
                                 "id": call_id,
                                 "error": {
                                     "code": "VALIDATION_ERROR",
@@ -363,7 +365,7 @@ class Ephaptic:
                                 else: adapter = None
 
                                 try:
-                                    await transport.send(msgpack.dumps({
+                                    await transport.send(encoding.encode({
                                         'id': call_id,
                                         'stream': True,
                                     }))
@@ -371,7 +373,7 @@ class Ephaptic:
                                     if is_async_gen:
                                         async for chunk in result:
                                             data = validate(chunk, type_)
-                                            await transport.send(msgpack.dumps({
+                                            await transport.send(encoding.encode({
                                                 'id': call_id,
                                                 'chunk': data,
                                             }))
@@ -396,12 +398,12 @@ class Ephaptic:
                                             if done: break
 
                                             data = validate(chunk, type_)
-                                            await transport.send(msgpack.dumps({
+                                            await transport.send(encoding.encode({
                                                 'id': call_id,
                                                 'chunk': data,
                                             }))
                                     
-                                    await transport.send(msgpack.dumps({
+                                    await transport.send(encoding.encode({
                                         'id': call_id,
                                         'done': True,
                                     }))
@@ -413,7 +415,7 @@ class Ephaptic:
                                 except Exception as e:
                                     import traceback
                                     traceback.print_exc()
-                                    await transport.send(msgpack.dumps({
+                                    await transport.send(encoding.encode({
                                         'id': call_id,
                                         'error': { # TODO: Upgrade this once we figure out error handling
                                             'message': f"Error during stream: {e}"
@@ -433,7 +435,7 @@ class Ephaptic:
                                     # TODO: See 391
                                     import traceback
                                     traceback.print_exc()
-                                    await transport.send(msgpack.dumps({
+                                    await transport.send(encoding.encode({
                                         "id": call_id,
                                         "error": {
                                             "code": "RETURN_VALIDATION_ERROR",
@@ -445,16 +447,16 @@ class Ephaptic:
                             elif isinstance(result, pydantic.BaseModel):
                                 result = result.model_dump(mode='json')
 
-                            await transport.send(msgpack.dumps({"id": call_id, "result": result}))
+                            await transport.send(encoding.encode({"id": call_id, "result": result}))
                         except Exception as e:
                             # TODO: See 391
-                            await transport.send(msgpack.dumps({"id": call_id, "error": str(e)}))
+                            await transport.send(encoding.encode({"id": call_id, "error": str(e)}))
                         finally:
                             _active_transport_ctx.reset(token_transport)
                             _active_user_ctx.reset(token_user)
                             _scope_ctx.reset(token_scope)
                     else:
-                        await transport.send(msgpack.dumps({
+                        await transport.send(encoding.encode({
                             "id": call_id, 
                             "error": f"Function '{func_name}' not found."
                         })) # TODO: See 391
