@@ -98,7 +98,7 @@ class EphapticTarget:
 
     async def emit(self, event_instance: pydantic.BaseModel):
         event_name = event_instance.__class__.__name__
-        payload = event_instance.model_dump(mode='json')
+        payload = event_instance.model_dump(mode='python')
         await manager.broadcast(
             self.user_ids,
             event_name,
@@ -225,7 +225,7 @@ class Ephaptic:
        
     async def emit(self, event_instance: pydantic.BaseModel):
         event_name = event_instance.__class__.__name__
-        payload = event_instance.model_dump(mode='json')
+        payload = event_instance.model_dump(mode='python')
         transport: Transport = _active_transport_ctx.get()
         if not transport:
             raise RuntimeError(
@@ -339,10 +339,10 @@ class Ephaptic:
                             if expected and expected is not inspect.Signature.empty and expected is not typing.Any:
                                 adapter = adapter or pydantic.TypeAdapter(expected)
                                 validated = adapter.validate_python(payload, from_attributes=True)
-                                return adapter.dump_python(validated, mode='json')
+                                return adapter.dump_python(validated, mode='python')
                             elif isinstance(payload, pydantic.BaseModel):
                                 # incase dev returned basemodel and forgot to set return type
-                                return payload.model_dump(mode='json')
+                                return payload.model_dump(mode='python')
                             else: return payload
 
                         try:
@@ -427,7 +427,7 @@ class Ephaptic:
                                 try:
                                     adapter = pydantic.TypeAdapter(return_type)
                                     validated = adapter.validate_python(result, from_attributes=True)
-                                    result = adapter.dump_python(validated, mode='json')
+                                    result = adapter.dump_python(validated, mode='python')
                                 except Exception as e:
                                     # Should we really treat this separately?
                                     # For input it's understandable, but for server responses it feels like a server issue.
@@ -445,7 +445,7 @@ class Ephaptic:
                                     }))
                                     continue
                             elif isinstance(result, pydantic.BaseModel):
-                                result = result.model_dump(mode='json')
+                                result = result.model_dump(mode='python')
 
                             await transport.send(encoding.encode({"id": call_id, "result": result}))
                         except Exception as e:
