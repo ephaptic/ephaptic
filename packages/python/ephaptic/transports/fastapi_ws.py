@@ -8,10 +8,13 @@ class FastAPIWebSocketTransport(WebSocketTransport):
         self.remote_addr = ws.client.host if ws.client else 'unknown'
 
     async def send(self, data: bytes):
-        await self.ws.send_bytes(data)
+        try:
+            await self.ws.send_bytes(data)
+        except (WebSocketDisconnect, RuntimeError):
+            raise Transport.ConnectionClosed from None
 
     async def receive(self) -> bytes:
         try:
             return await self.ws.receive_bytes()
-        except WebSocketDisconnect:
+        except (WebSocketDisconnect, RuntimeError):
             raise Transport.ConnectionClosed from None

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ephaptic"
-version = "0.4.5"
+version = "0.4.6"
 authors = [
     { name="uukelele", email="robustrobot11@gmail.com" },
 ]
@@ -17,7 +17,7 @@ dependencies = [
     "msgpack>=1.0.0",
     "websockets>=12.0",
     "pydantic>=2.0",
-    "typer[standard]>=0.20.0",
+    "typer>=0.20.0",
     "python-dotenv",
     "watchfiles",
     "redis",
@@ -33,9 +33,11 @@ test = [
 ]
 
 [project.urls]
+Docs = "https://ephaptic.github.io/ephaptic"
 Homepage = "https://github.com/ephaptic/ephaptic"
+Source = "https://github.com/ephaptic/ephaptic"
 Repository = "https://github.com/ephaptic/ephaptic"
-"Issue Tracker" = "https://github.com/ephaptic/ephaptic/issues"
+Issues = "https://github.com/ephaptic/ephaptic/issues"
 
 [project.scripts]
 ephaptic = "ephaptic.cli:app"

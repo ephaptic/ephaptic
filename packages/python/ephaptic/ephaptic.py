@@ -1,11 +1,7 @@
 import asyncio
-import warnings
 import redis.asyncio as redis
 import pydantic
 import time
-
-from contextvars import ContextVar
-from .localproxy import LocalProxy
 
 from .transports import Transport
 from .encodings.msgpack import MsgpackEncoding
