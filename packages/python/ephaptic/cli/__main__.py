@@ -5,13 +5,12 @@ from pathlib import Path
 
 import typer
 
-from pathlib import Path
 from pydantic import TypeAdapter
 
 from ephaptic import Ephaptic
 from ephaptic.decorators import META_KEY
 
-from typing import *
+from typing import Any, Dict, List
 
 app = typer.Typer(help="Ephaptic CLI tool.")
 
@@ -32,7 +31,7 @@ def key_name(key: str) -> str:
     else: return json.dumps(key)
 
 def validate(name: str) -> str:
-    if IDENTIFIER_REGEX.match(name):
+    if not IDENTIFIER_REGEX.match(name):
         safe = re.sub(r'[^a-zA-Z0-9_$]', '_', name)
         if name != safe: log(typer.style(f"[warning] '{name}' is not a valid identifier. sanitizing to '{safe}'", fg=typer.colors.YELLOW))
         return safe
@@ -107,7 +106,7 @@ def TS_generate(data: dict):
         '',
         'import { type EphapticClientBase } from "@ephaptic/client";',
         '',
-        'export type EphapticQuery<TArgs extends any[], TReturn> = { queryKey: [string, ...TArgs]; queryFn: () => Promise<TReturn>; }'
+        'export type EphapticQuery<TArgs extends any[], TReturn> = { queryKey: [string, ...TArgs]; queryFn: () => Promise<TReturn>; }',
         '',
     ])
 
@@ -159,7 +158,7 @@ def TS_generate(data: dict):
         args: List[str] = []
 
         args.extend([
-            f"{validate(arg_name)}{'' if arg_name in method_data.get('required', {}) else '?'}: {TS_resolve_type(arg_schema)}"
+            f"{validate(arg_name)}{'' if arg_name in method_data.get('required', []) else '?'}: {TS_resolve_type(arg_schema)}"
             for arg_name, arg_schema in method_data.get('args', {}).items()
         ])
 
