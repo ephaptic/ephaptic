@@ -32,7 +32,7 @@ def key_name(key: str) -> str:
     else: return json.dumps(key)
 
 def validate(name: str) -> str:
-    if IDENTIFIER_REGEX.match(name):
+    if not IDENTIFIER_REGEX.match(name):
         safe = re.sub(r'[^a-zA-Z0-9_$]', '_', name)
         if name != safe: log(typer.style(f"[warning] '{name}' is not a valid identifier. sanitizing to '{safe}'", fg=typer.colors.YELLOW))
         return safe
