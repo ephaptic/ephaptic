@@ -11,7 +11,7 @@ from pydantic import TypeAdapter
 from ephaptic import Ephaptic
 from ephaptic.decorators import META_KEY
 
-from typing import *
+from typing import Any, Dict, List
 
 app = typer.Typer(help="Ephaptic CLI tool.")
 
