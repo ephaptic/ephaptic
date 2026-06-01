@@ -159,7 +159,7 @@ def TS_generate(data: dict):
         args: List[str] = []
 
         args.extend([
-            f"{validate(arg_name)}{'' if arg_name in method_data.get('required', {}) else '?'}: {TS_resolve_type(arg_schema)}"
+            f"{validate(arg_name)}{'' if arg_name in method_data.get('required', []) else '?'}: {TS_resolve_type(arg_schema)}"
             for arg_name, arg_schema in method_data.get('args', {}).items()
         ])
 
