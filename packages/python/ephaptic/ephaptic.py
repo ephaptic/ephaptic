@@ -225,7 +225,7 @@ class Ephaptic:
         transport: Transport = _active_transport_ctx.get()
         if not transport:
             raise RuntimeError(
-                f".emit({event_name}) called outside RPC context."
+                f".emit({event_name}) called outside RPC context. "
                 f"Use .to(...).emit({event_name}) to broadcast from background tasks, to specific user(s)."
             )
         
