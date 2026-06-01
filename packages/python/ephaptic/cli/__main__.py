@@ -107,7 +107,7 @@ def TS_generate(data: dict):
         '',
         'import { type EphapticClientBase } from "@ephaptic/client";',
         '',
-        'export type EphapticQuery<TArgs extends any[], TReturn> = { queryKey: [string, ...TArgs]; queryFn: () => Promise<TReturn>; }'
+        'export type EphapticQuery<TArgs extends any[], TReturn> = { queryKey: [string, ...TArgs]; queryFn: () => Promise<TReturn>; }',
         '',
     ])
 
