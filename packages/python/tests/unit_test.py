@@ -102,7 +102,8 @@ def test_include_binds_and_mounts():
 
     assert router.ephaptic is eph
     # mounted as an HTTP route...
-    assert any(getattr(r, 'path', None) == '/ping' for r in app.routes)
+    from fastapi.testclient import TestClient
+    assert TestClient(app).get('/ping').status_code == 200
     # ...and exposed over RPC.
     assert 'ping' in eph._exposed_functions
 
