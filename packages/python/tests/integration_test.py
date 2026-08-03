@@ -5,6 +5,7 @@ import httpx
 import json
 
 from ephaptic import connect
+from ephaptic.errors import EphapticError
 
 PORT = os.getenv('TEST_PORT', '8000')
 SERVER_URL = f"ws://127.0.0.1:{PORT}/_ephaptic"
@@ -91,6 +92,22 @@ async def test_rpc_stream_functions():
     
 
 @pytest.mark.asyncio
+async def test_stream_mid_error_surfaces():
+    client = await connect(SERVER_URL)
+
+    stream = await client.failing_stream()
+
+    received = []
+    with pytest.raises(EphapticError) as exc_info:
+        async for item in stream:
+            received.append(item)
+
+    assert received == ['first']
+    assert exc_info.value.code == 'STREAM_FAILED'
+    assert exc_info.value.data == {'after': 'first'}
+
+
+@pytest.mark.asyncio
 async def test_router_rpc_access():
     client = await connect(SERVER_URL, auth="user123")
     result = await client.r_echo(message="hello")
@@ -167,6 +184,137 @@ async def test_router_http_jsonl():
             
             assert received_objects[1]["text"] == "Message D"
             assert received_objects[1]["num"] == 1
+
+@pytest.mark.asyncio
+async def test_service_error_over_rpc():
+    client = await connect(SERVER_URL, auth="user123")
+    with pytest.raises(EphapticError) as exc_info:
+        await client.withdraw(amount=500)
+
+    err = exc_info.value
+    assert err.code == 'INSUFFICIENT_FUNDS'
+    assert err.message == 'You do not have enough funds.'
+    assert err.data == {'required': 500, 'available': 100}
+
+
+@pytest.mark.asyncio
+async def test_service_error_over_http():
+    async with httpx.AsyncClient(base_url=HTTP_SERVER_URL) as client:
+        resp = await client.get('/r_echo', params={'message': 'hi'})
+        assert resp.status_code == 401
+        body = resp.json()
+        assert body['code'] == 'UNAUTHORIZED'
+
+
+@pytest.mark.asyncio
+async def test_unhandled_error_is_generic():
+    client = await connect(SERVER_URL, auth="user123")
+    with pytest.raises(EphapticError) as exc_info:
+        await client.raise_unhandled()
+
+    err = exc_info.value
+    assert err.code == 'INTERNAL'
+    # debug = False
+    assert 'secret internal detail' not in err.message
+    assert err.data is None
+
+
+@pytest.mark.asyncio
+async def test_http_exception_over_rpc():
+    client = await connect(SERVER_URL, auth="user123")
+    with pytest.raises(EphapticError) as exc_info:
+        await client.raise_http()
+
+    err = exc_info.value
+    assert err.code == 'HTTP_404'
+    assert err.message == 'Nope'
+
+
+@pytest.mark.asyncio
+async def test_ephaptic_exception_handler():
+    client = await connect(SERVER_URL, auth="user123")
+    with pytest.raises(EphapticError) as exc_info:
+        await client.raise_custom()
+
+    err = exc_info.value
+    assert err.code == 'CUSTOM_HANDLED'
+    assert err.data == {'handled': True}
+
+
+@pytest.mark.asyncio
+async def test_app_exception_handler_over_rpc():
+    client = await connect(SERVER_URL, auth="user123")
+    with pytest.raises(EphapticError) as exc_info:
+        await client.raise_app_level()
+
+    err = exc_info.value
+    assert err.code == 'APP_LEVEL'
+    assert err.message == 'from app handler'
+    assert err.data == {'teapot': True}
+
+
+@pytest.mark.asyncio
+async def test_ratelimit_is_typed_error():
+    client = await connect(SERVER_URL, auth="rl-user")
+    await client.spam_me()
+    with pytest.raises(EphapticError) as exc_info:
+        await client.spam_me()
+
+    err = exc_info.value
+    assert err.code == 'RATELIMIT'
+    assert isinstance(err.data, dict) and 'retry_after' in err.data
+
+
+@pytest.mark.asyncio
+async def test_expose_requires_login_rejects_anonymous():
+    # @expose(requires_login=True)
+    anon = await connect(SERVER_URL)
+    with pytest.raises(EphapticError) as exc_info:
+        await anon.rpc_secret()
+    assert exc_info.value.code == 'UNAUTHORIZED'
+
+    authed = await connect(SERVER_URL, auth="user123")
+    assert await authed.rpc_secret() == 'rpc-secret'
+
+
+@pytest.mark.asyncio
+async def test_falsy_and_null_chunks_survive():
+    client = await connect(SERVER_URL)
+    received = []
+    async for value in await client.falsy_stream():
+        received.append(value)
+    assert received == [0, None, 1]
+
+
+@pytest.mark.asyncio
+async def test_null_result_is_delivered():
+    client = await connect(SERVER_URL)
+    assert await client.returns_none() is None
+
+
+@pytest.mark.asyncio
+async def test_call_id_restarts_at_one_per_connection():
+    client = await connect(SERVER_URL, auth="user123")
+    await client.echo(message="a")
+    assert client._call_id == 1
+
+
+@pytest.mark.asyncio
+async def test_call_escape_hatch_for_colliding_names():
+    client = await connect(SERVER_URL, auth="user123")
+    assert await client.call('echo', message='via call') == 'via call'
+
+
+@pytest.mark.asyncio
+async def test_disconnect_suppresses_reconnection():
+    client = await connect(SERVER_URL, auth="user123")
+    await client.echo(message="x")
+    await client.disconnect()
+    assert client.state == 'closed'
+    with pytest.raises(EphapticError) as exc_info:
+        await client.echo(message="y")
+    assert exc_info.value.code == 'DISCONNECTED'
+
 
 @pytest.mark.asyncio
 async def test_router_functions_in_openapi():

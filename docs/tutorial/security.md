@@ -4,15 +4,9 @@ To solve this, let's use a simple login system with <abbr title="JSON Web Tokens
 
 First, let's make sure the JWT library is installed on the backend.
 
-<div class="termy">
-
 ```console
-$ # Make sure you are in the venv.
-$ echo "pyjwt" >> backend/requirements.txt
-$ pip install -r backend/requirements.txt
+$ uv add pyjwt
 ```
-
-</div>
 
 Now, we can edit the backend file.
 
@@ -40,7 +34,7 @@ def verify_token(token):
 
 @identity_loader # This decorator tells ephaptic the function we are using to load identity, from the auth payload.
 def load_identity(auth):
-    token = auth.get("_jwt")
+    token = auth.get("jwt")
     if token:
         return verify_token(token)
     return None
@@ -59,10 +53,21 @@ async def get_user() -> str:
     return active_user()
 ```
 
+!!! warning "Restricting origins"
+    WebSockets aren't subject to the browser's same-origin policy, so any website could open a connection to your backend. If you rely on credentials which browsers will send, like cookies, you should probably pass an origin allow-list so only your own frontend can connect:
+
+    ```python
+    ephaptic = Ephaptic.from_app(app, allowed_origins=["https://myapp.com"])
+    ```
+
+    Token-based auth (like the JWTs below, sent explicitly in the `auth` object) is not vulnerable to this, since another origin can't read your token out of `localStorage`.
+
 Now, on the frontend, we can do this:
 
 ```typescript
-const client = connect({ auth: { _jwt: window.localStorage.getItem('token') } }) as unknown as EphapticService;
+const client = connect({
+    auth: { jwt: window.localStorage.getItem('token') }
+}) as EphapticService;
 ```
 
 But we haven't got a way to *set* the token in localStorage yet.
@@ -76,8 +81,8 @@ So, let's add login handling to the frontend.
 
     const client = connect({
         url: "ws://localhost:8000/_ephaptic",
-        auth: { _jwt: token }
-    }) as unknown as EphapticService;
+        auth: { jwt: token }
+    }) as EphapticService;
 
     function App() {
         const [user, setUser] = useState<string | null>(null);
@@ -124,8 +129,8 @@ So, let's add login handling to the frontend.
 
         const client = connect({
             url: "ws://localhost:8000/_ephaptic",
-            auth: { _jwt: token }
-        }) as unknown as EphapticService;
+            auth: { jwt: token }
+        }) as EphapticService;
 
         let user = $state<string | null>(null);
 

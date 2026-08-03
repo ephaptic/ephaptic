@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ephaptic"
-version = "0.4.6"
+version = "0.5.0"
 authors = [
     { name="uukelele", email="robustrobot11@gmail.com" },
 ]
@@ -21,15 +21,21 @@ dependencies = [
     "python-dotenv",
     "watchfiles",
     "redis",
+    "docstring-parser",
 ]
 
 [project.optional-dependencies]
+server = [
+    "fastapi",
+    "uvicorn",
+]
 test = [
     "pytest",
     "pytest-asyncio",
     "fastapi",
     "uvicorn",
     "httpx",
+    "quart",
 ]
 
 [project.urls]

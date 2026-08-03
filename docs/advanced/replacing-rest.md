@@ -80,11 +80,8 @@ Here is the above code but with Ephaptic instead:
 ```python
 from pydantic import BaseModel
 from typing import Optional
-from ephaptic import Ephaptic
-from ephaptic.ext.fastapi import Router
-from ephaptic.ctx import is_http
+from ephaptic import Ephaptic, ServiceError
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
 
 class User(BaseModel):
     id: int
@@ -96,35 +93,33 @@ app = FastAPI()
 ephaptic = Ephaptic.from_app(app)
 
 # ephaptic router still supports all APIRouter configuration
-userRouter = Router(ephaptic, prefix='/users')
+userRouter = ephaptic.router(prefix='/users')
 
 @userRouter.get('/{id}')
 async def get_user(id: int) -> User: # same type hinting works for ephaptic and FastAPI
-    try:
-        return await some_internal_helper(id)
-    except Exception as e:
-        # you can just raise a normal exception here.
-        # raise Exception('somthing happened !!')
-        # but if you really want the status code to carry over (for HTTP clients):
-        if is_http():
-            return JSONResponse(status_code=500, content={'error': str(e)})
-        else:
-            raise e # raise the error itself so ephaptic can handle it
+    user = await some_internal_helper(id)
+    if user is None:
+        raise ServiceError('User not found.', code='NOT_FOUND', status_code=404)
+        # when a HTTP client fetches `/users/000` -> returns 404 Not Found with this detail
+        # while an RPC client receives his own error which is raised in his language e.g. javascript. and types!
+    return user
+
+ephaptic.include(userRouter) # binds + mounts the router in one call
 ```
 
 You'd also have this command running (watcher):
-```shell
-$ ephaptic generate src.app:ephaptic -o ../frontend/src/lib/schema.d.ts
+```console
+$ uv run ephaptic generate src.app:ephaptic -o ../frontend/src/lib/schema.d.ts
 ```
 
 ```typescript
 import type { User, EphapticService } from '$lib/schema'; // this is Svelte import ('$lib'), but obviously you can replace with whatever you'd use
 import { connect } from '@ephaptic/client'; // or you may have a singleton pattern (recommended)
 
-const client = connect() as unknown as EphapticService;
+const client = connect() as EphapticService; // tell TS that the client is in this schema
 
 // now call the endpoint
-async function getUser(id: number): Promise<User> {
+async function getUser(id: number): Promise<User> { // User is a direct map of your User object in Pydantic
     return await client.get_user(id);
 }
 
@@ -138,11 +133,11 @@ const user = await getUser(0);
 const user = await client.get_user(0);
 
 // if you write:
-const user = await getUser('hi');
-// typescript will yell at you. but the second you change the input on the backend from `int` to `str` the error will disappear. instantly
+const user = await getUser('hi'); // use input string 'hi' instead of a number, which is what python is hinted to expect
+// typescript will yell at you. but the second you change the input on the backend from `int` to `str` the error will disappear. instantly.
 
 // or:
-(await getUser(0)).nonexistentproperty;
+console.log(user.nonexistentproperty);
 // again will yell at you
-// even the second you write that closing bracket and then the dot, your IDE autocomplete will show all the possible properties (and their types (and docstrings?))
+// even the second you write that dot, your IDE autocomplete will show all the possible properties (and their types and docstrings)
 ```

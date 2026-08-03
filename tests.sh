@@ -12,6 +12,7 @@ export TEST_PORT
 PYTHON_VENV_DIR="packages/python/.venv"
 PYTHON_PACKAGE_DIR="packages/python"
 JS_CLIENT_DIR="packages/js/client"
+JS_SERVER_DIR="packages/js/server"
 SERVER_URL="http://localhost:$TEST_PORT"
 UVICORN_APP_PATH="packages.python.tests.fixtures.server:app"
 
@@ -50,7 +51,7 @@ if [ ! -d "node_modules" ]; then
 fi
 
 echo -e "${YELLOW}Running JavaScript Unit Tests...${NC}"
-npm test -- --run src/tests/client.test.ts
+npm test -- --run src/tests/client.test.ts src/tests/regressions.test.ts
 echo -e "${GREEN}JavaScript Unit Tests Passed.${NC}"
 
 cd - > /dev/null
@@ -87,5 +88,10 @@ cd "$JS_CLIENT_DIR"
 npm test -- --run src/tests/integration.test.ts
 echo -e "${GREEN}JavaScript Integration Tests Passed.${NC}"
 cd - > /dev/null
+
+echo -e "${YELLOW}Running Cross-Language Parity Tests...${NC}"
+(cd "$JS_SERVER_DIR" && run_quiet npm install && run_quiet npm run build)
+pytest "$PYTHON_PACKAGE_DIR/tests/parity_test.py"
+echo -e "${GREEN}Cross-Language Parity Tests Passed.${NC}"
 
 echo -e "${GREEN}All tests passed successfully!${NC}"

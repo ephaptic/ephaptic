@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { EphapticClientBase, connect } from '../';
+import { EphapticClientBase, connect, EphapticError } from '../';
+import { AsyncQueue } from '../queue';
 
 vi.stubGlobal('WebSocket', vi.fn(() => ({
     send: vi.fn(),
@@ -95,5 +96,42 @@ describe('EphapticClientBase', () => {
             expect(options.queryKey).toEqual(['getUser', 1, 'a']);
             expect(typeof options.queryFn).toBe('function');
         });
+    });
+});
+
+describe('EphapticError', () => {
+    it('carries code, message and data', () => {
+        const err = new EphapticError('NOT_FOUND', 'nope', { id: 1 });
+        expect(err).toBeInstanceOf(Error);
+        expect(err.code).toBe('NOT_FOUND');
+        expect(err.message).toBe('nope');
+        expect(err.data).toEqual({ id: 1 });
+    });
+});
+
+describe('AsyncQueue', () => {
+    it('delivers pushed items, including falsy ones', async () => {
+        const q = new AsyncQueue<any>();
+        q.push(0);
+        q.push('');
+        q.close();
+
+        const received: any[] = [];
+        for await (const item of q) received.push(item);
+
+        expect(received).toEqual([0, '']);
+    });
+
+    it('surfaces a mid-stream error to the consumer', async () => {
+        const q = new AsyncQueue<number>();
+        q.push(1);
+        q.fail(new EphapticError('STREAM_FAILED', 'boom'));
+
+        const received: number[] = [];
+        await expect((async () => {
+            for await (const item of q) received.push(item);
+        })()).rejects.toThrow('boom');
+
+        expect(received).toEqual([1]);
     });
 });

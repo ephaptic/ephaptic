@@ -28,8 +28,9 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
-    implementation(libs.okhttp)
-    implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.moshipack)
-    implementation(libs.moshi.kotlin)
+
+    api(libs.okhttp)
+    api(libs.kotlinx.coroutines.android)
+    api(libs.moshipack)
+    api(libs.moshi.kotlin)
 }

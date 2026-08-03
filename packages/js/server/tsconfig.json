@@ -5,11 +5,13 @@
     "moduleResolution": "node",
     "strict": true,
     "declaration": true,
-    "emitDeclarationOnly": true, 
+    "emitDeclarationOnly": false,
     "outDir": "./dist",
+    "rootDir": "./src",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"]
   },
   "include": ["src"],
   "exclude": ["src/tests"] 

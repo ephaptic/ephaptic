@@ -1,6 +1,6 @@
 from contextvars import ContextVar
 
-_scope_ctx = ContextVar('ephaptic_scope', default='rpc')
+_scope_ctx = ContextVar('ephaptic_scope', default=None)
 _active_transport_ctx = ContextVar('active_transport', default=None)
 _active_user_ctx = ContextVar('active_user', default=None)
 

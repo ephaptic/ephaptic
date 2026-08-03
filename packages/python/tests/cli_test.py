@@ -55,6 +55,14 @@ def test_generate_ts():
     assert "queries: {" in output
     assert "echo(message: string): EphapticQuery" in output
 
+    assert "export interface EphapticErrors" in output
+    assert "INSUFFICIENT_FUNDS" in output
+
+    assert "Divide one number by another." in output
+    assert "@param a The numerator." in output
+    assert "@param b The denominator (must be non-zero)." in output
+    assert "@returns The quotient of a and b." in output
+
 def test_generate_kt():
     result = runner.invoke(app, ['generate', fixture_path, '-o', '-', '--lang', 'kt'], catch_exceptions=False)
 
@@ -85,3 +93,11 @@ def test_generate_json():
     assert "echo" in schema["methods"]
     assert "events" in schema
     assert "MyEvent" in schema["events"]
+    assert "errors" in schema
+    assert "INSUFFICIENT_FUNDS" in schema["errors"]
+    assert schema["errors"]["INSUFFICIENT_FUNDS"]["status_code"] == 402
+
+    divide = schema["methods"]["divide"]
+    assert divide["description"] == "Divide one number by another."
+    assert divide["args"]["a"]["description"] == "The numerator."
+    assert divide["return_description"] == "The quotient of a and b."

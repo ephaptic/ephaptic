@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Request
-from ephaptic import Ephaptic, active_user
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse
+from ephaptic import Ephaptic, active_user, ServiceError
 from ephaptic.ctx import is_http, is_rpc
 from ephaptic.ext.fastapi import Router
 import pydantic, typing, asyncio, time
@@ -33,6 +34,19 @@ async def echo(message: str) -> str:
 @ephaptic.expose
 async def add(a: int, b: int) -> int:
     return a + b
+
+@ephaptic.expose
+async def divide(a: int, b: int) -> float:
+    """Divide one number by another.
+
+    Args:
+        a: The numerator.
+        b: The denominator (must be non-zero).
+
+    Returns:
+        The quotient of a and b.
+    """ # test docstrings
+    return a / b
 
 @ephaptic.expose
 async def emit_event(message: str):
@@ -71,6 +85,70 @@ def sync_generator() -> typing.Generator[MyTestObject, None, None]:
         time.sleep(1)
         yield MyTestObject(text=message, num=i)
 
+@ephaptic.expose
+async def failing_stream() -> typing.AsyncGenerator[str, None]:
+    yield 'first'
+    raise ServiceError('The stream broke. o noez :(', code='STREAM_FAILED', data={'after': 'first'})
+
+@ephaptic.expose
+async def falsy_stream() -> typing.AsyncGenerator[typing.Optional[int], None]:
+    for value in (0, None, 1):
+        yield value
+
+@ephaptic.expose
+async def returns_none() -> typing.Optional[str]:
+    return None
+
+@ephaptic.expose(requires_login=True)
+async def rpc_secret() -> str:
+    return 'rpc-secret'
+
+
+class InsufficientFundsData(pydantic.BaseModel):
+    required: int
+    available: int
+
+@ephaptic.error
+class InsufficientFunds(ServiceError):
+    code = 'INSUFFICIENT_FUNDS'
+    message = 'You do not have enough funds.'
+    status_code = 402
+    data: InsufficientFundsData
+
+@ephaptic.expose
+async def withdraw(amount: int) -> str:
+    if amount > 100:
+        raise InsufficientFunds(data=InsufficientFundsData(required=amount, available=100))
+    return 'ok'
+
+@ephaptic.expose
+async def raise_unhandled() -> str:
+    raise ValueError('secret internal detail')
+
+@ephaptic.expose
+async def raise_http() -> str:
+    raise HTTPException(status_code=404, detail='Nope')
+
+class CustomError(Exception): ...
+
+@ephaptic.exception_handler(CustomError)
+def handle_custom(exc):
+    return ServiceError('Handled by ephaptic.', code='CUSTOM_HANDLED', status_code=400, data={'handled': True})
+
+@ephaptic.expose
+async def raise_custom() -> str:
+    raise CustomError('boom')
+
+class AppLevelError(Exception): ...
+
+@app.exception_handler(AppLevelError)
+async def app_level_handler(request, exc):
+    return JSONResponse(status_code=418, content={'code': 'APP_LEVEL', 'message': 'from app handler', 'data': {'teapot': True}})
+
+@ephaptic.expose
+async def raise_app_level() -> str:
+    raise AppLevelError()
+
 
 router = Router(ephaptic)
 
@@ -107,7 +185,7 @@ async def r_test_custom() -> MyTestObject:
 
     return object # Should return a mapped Pydantic version of the object, where object.default == "DEFAULT"
 
-app.include_router(router)
+ephaptic.include(router)
 
 if __name__ == "__main__":
     import uvicorn

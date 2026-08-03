@@ -1,6 +1,6 @@
 {
   "name": "@ephaptic/server",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "The universal JavaScript/TypeScript server for ephaptic.",
   "keywords": [
     "rpc"
@@ -16,20 +16,20 @@
   "license": "MIT",
   "author": "ephaptic",
   "type": "module",
-  "main": "dist/ephaptic.cjs",
-  "module": "dist/ephaptic.js",
-  "unpkg": "dist/ephaptic.umd.cjs",
-  "jsdelivr": "dist/ephaptic.umd.cjs",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "CONFORMANCE.md"
   ],
   "scripts": {
-    "test": "echo 'No test specified.'",
+    "test": "npm run build && node src/tests/smoke.mjs",
     "build": "tsc",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
+    "@ephaptic/client": "file:../client",
     "@types/node": "^25.9.1",
     "@types/ws": "^8.18.1",
     "electron": "^42.2.0",
@@ -40,6 +40,8 @@
   "peerDependencies": {
     "electron": "*",
     "express": "*",
+    "ioredis": "*",
+    "redis": "*",
     "ws": "*"
   },
   "peerDependenciesMeta": {
@@ -47,6 +49,12 @@
       "optional": true
     },
     "express": {
+      "optional": true
+    },
+    "ioredis": {
+      "optional": true
+    },
+    "redis": {
       "optional": true
     },
     "ws": {

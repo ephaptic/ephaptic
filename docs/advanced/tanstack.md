@@ -1,6 +1,6 @@
 For those of you who have used tRPC before, you might be familiar with [**TanStack Query**](https://tanstack.com/query).
 
-Luckily for you, ephaptic has *first-class* support for it.
+Luckily for you, ephaptic has *first-class* support for it. (Well, kind of, I just added the bare minimum XD but it works 👍)
 
 Let's use it.
 
@@ -11,10 +11,10 @@ Let's use it.
     import type { EphapticService } from './schema';
     import { useQuery } from '@tanstack/react-query';
 
-    const client = connect() as unknown as EphapticService;
+    const client = connect() as EphapticService;
 
     function Todos() {
-        const { data, isPending, error } = useQuery(client.queries.getTodos()); // You can also pass arguments, the same way you normally would.
+        const { data, isPending, error } = useQuery(client.queries.getTodos()); // you can also pass arguments, the same way you normally would.
 
         if (isPending) return <span>Loading...</span>;
         if (error) return <span>Oops!</span>;
@@ -33,9 +33,9 @@ Let's use it.
         import type { EphapticService } from '$lib/schema';
         import { createQuery } from '@tanstack/svelte-query';
 
-        const client = connect() as unknown as EphapticService;
+        const client = connect() as EphapticService;
 
-        // NOTE: Svelte Query v5 requires you to pass a function first, for reactivity.
+        // [NOTE]: Svelte Query v5 requires you to pass a function first, for reactivity.
         const todos = createQuery(() => { client.queries.getTodos() }); // You can also pass arguments, the same way you normally would.
     </script>
 

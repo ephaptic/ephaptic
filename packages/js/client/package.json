@@ -1,6 +1,6 @@
 {
   "name": "@ephaptic/client",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "The universal JavaScript/TypeScript client for ephaptic.",
   "keywords": [
     "rpc"
@@ -21,8 +21,16 @@
   "unpkg": "dist/ephaptic.umd.cjs",
   "jsdelivr": "dist/ephaptic.umd.cjs",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/ephaptic.js",
+      "require": "./dist/ephaptic.cjs"
+    }
+  },
   "files": [
-    "dist"
+    "dist",
+    "CONFORMANCE.md"
   ],
   "scripts": {
     "dev": "vite",

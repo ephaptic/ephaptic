@@ -1,3 +1,6 @@
+parity/.out/
+parity/.server.log
+
 # Gradle files
 .gradle/
 build/

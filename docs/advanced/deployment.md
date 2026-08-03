@@ -107,6 +107,17 @@ server {
 }
 ```
 
+!!! tip "Rate limiting behind a proxy"
+    Behind a reverse proxy, the connection's peer address is the *proxy's* IP, so anonymous (IP-based) rate limits would lump every visitor together. The proxy above forwards the real client IP in `X-Forwarded-For`. In this scenario, you can tell ephaptic which header to read the client IP from:
+
+    ```python
+    ephaptic = Ephaptic.from_app(app, ip_header="X-Forwarded-For")
+    ```
+
+    Use whichever header your proxy/CDN sets (e.g. `CF-Connecting-IP` for Cloudflare). For comma-separated headers like `X-Forwarded-For`, ephaptic uses the first entry.
+    
+    Only set this when you're behind a proxy. Because otherwise, people can set arbitrary values into `X-Forwarded-For` and fake their origin address.
+
 Now, run `docker compose up --build` and head to [localhost:80](http://localhost:80) in your browser.
 
 !!! tip

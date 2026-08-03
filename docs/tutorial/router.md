@@ -2,11 +2,49 @@
 
 The Router is a FastAPI-specific way to expose your API routes both to an Ephaptic client, and to HTTP clients.
 
+The Router is the recommended way that you should build a fullstack app with ephaptic if you are planning on having many different clients.
+
+There are also multiple ways to instantiate it.
+
+### 1. Top-level import
+
+```python
+from ephaptic import Router
+router = Router(ephaptic)
+```
+
+### 2. Extended import (you'd never use this)
+
+```python
+from ephaptic.ext.fastapi import Router
+router = Router(ephaptic)
+```
+
+### 3. Factory from your instance
+
+```python
+router = ephaptic.router()
+```
+
+### 4. Create the Router before Ephaptic is instantiated
+
+```python title="services/users.py"
+from ephaptic import Router
+
+router = Router(prefix="/users")
+```
+
+```python title="app.py"
+from .services.users import router
+
+ephaptic.include(router)
+```
+
 ## Features
 
 It comes with the following benefits:
 
-- You can `app.include_router(router)` with an Ephaptic Router the same way you can with a FastAPI APIRouter.
+- You can mount it with `ephaptic.include(router)` - this binds the Router to your instance *and* includes it on the app (extra kwargs like `prefix`/`tags` are forwarded to FastAPI's `include_router`). A plain `app.include_router(router)` also works if the Router is already bound to Ephaptic.
 - Since both FastAPI and Ephaptic share the same Pydantic validation strategy, you can type-hint the function arguments and response model and both FastAPI and Ephaptic will handle it properly.
     - Ephaptic will return your Pydantic model or primitive type or a combination of both as a TypeScript interface on the client (or whatever other Ephaptic client you use), while FastAPI will return it JSON-serialized for your other clients.
 - Functions exposed via the Router will show up in the FastAPI-generated `openapi.json`, meaning Ephaptic routes will even show up, fully typed, in your Swagger UI.
@@ -16,6 +54,7 @@ It comes with the following benefits:
 - You can even write streaming logic in both RPC and HTTP!
     - Ephaptic uses the simple `for await (const x of stream) { ... }` syntax, while for HTTP it returns your objects in a JSONL SSE format. Works with OpenAPI also.
     - For both formats you simply have to annotate response with `AsyncGenerator` / `Generator`, and `yield` each item.
+- Typed, structured errors work in both worlds: raise a `ServiceError` (or a FastAPI `HTTPException`) and it becomes a proper HTTP response for HTTP clients, and a typed `EphapticError` for RPC clients. See [Error Handling](errors.md).
 
 But how do you use it?
 
@@ -34,7 +73,7 @@ from ephaptic.ext.fastapi import Router
 import pydantic
 
 app = FastAPI()
-ephaptic = ephaptic.from_app(app)
+ephaptic = Ephaptic.from_app(app)
 
 @ephaptic.identity_loader
 def load_user(auth: str):
@@ -63,17 +102,16 @@ def echo(message: str) -> EchoResult:
         message=message,
     )
 
-app.include_router(router)
+ephaptic.include(router)
 ```
 
 Now, you can run this app, and send both authenticated and unauthenticated requests via a HTTP client and an Ephaptic client, and verify they work as intended. You can even go to `/docs` and see the echo function there!
 
 !!! tip
-    If you want to use a Router without passing the `Ephaptic` instance initially, e.g. in a separate file, you can do so by later binding before you include the router:
+    This works even if you defined the Router in a separate file without the `Ephaptic` instance. Because `ephaptic.include(...)` binds it for you:
     
     ```python
     router = Router() # you don't need any arguments
 
-    router.bind(ephaptic) # bind it to an ephaptic instance before using it
-    app.include_router(router)
+    ephaptic.include(router) # this gives the router a handle onto Ephaptic, *and* it includes the router to the FastAPI app.
     ```

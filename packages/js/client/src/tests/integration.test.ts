@@ -111,6 +111,24 @@ describe('ephaptic (connected to actual server)', () => {
         expect(receivedChunks[1].num).toBe(1);
     });
 
+    it('should surface a mid-stream error to the consumer', async () => {
+        const stream = await client.failing_stream();
+
+        const received: string[] = [];
+        let caught: any = null;
+
+        try {
+            for await (const item of stream) received.push(item);
+        } catch (err) {
+            caught = err;
+        }
+
+        expect(received).toEqual(['first']);
+        expect(caught).toBeTruthy();
+        expect(caught.code).toBe('STREAM_FAILED');
+        expect(caught.data).toEqual({ after: 'first' });
+    });
+
     it('should handle asynchronous streams via router', async () => {
         const stream = await client.r_async_generator();
         

@@ -14,7 +14,7 @@ class CtxMiddleware(BaseHTTPMiddleware):
 
         if self.ephaptic._http_identity_loader:
             user = await self.ephaptic._async(self.ephaptic._http_identity_loader)(request)
-            if user:
+            if user is not None:
                 user_token = _active_user_ctx.set(user)
 
         try:

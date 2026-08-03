@@ -76,6 +76,7 @@ nav:
     - Events: tutorial/events.md
     - Streaming: tutorial/streaming.md
     - The Router: tutorial/router.md
+    - Error Handling: tutorial/errors.md
   - Advanced:
     - Deployment: advanced/deployment.md
     - Redis Diagram: diagram.md

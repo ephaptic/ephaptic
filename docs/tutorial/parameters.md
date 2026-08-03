@@ -205,3 +205,43 @@ To fix this, let's render conditionally, and also add a loading message.
 !!! tip
     You may also wish to use a proper state handler, like TanStack Query, to clean up this process.
     We have first-class support for TanStack Query. See [the advanced section](../advanced/tanstack.md) for details.
+
+## Documenting functions
+
+Types aren't the only thing that syncs across the wire — your **docstrings** do too. Write a normal Python docstring, and ephaptic carries the description (and each parameter's) over to the client as JSDoc (or KDoc for Kotlin).
+
+Ephaptic uses [docstring-parser](https://pypi.org/project/docstring-parser/), so Google, NumPy, and reStructuredText styles all work - the style is auto-detected.
+
+Here's an example.
+
+```python
+@ephaptic.expose
+async def divide(a: int, b: int) -> float:
+    """Divide one number by another.
+
+    Args:
+        a: The numerator.
+        b: The denominator (must be non-zero).
+
+    Returns:
+        The quotient of a and b.
+    """
+    return a / b
+```
+
+After regenerating the schema, the description lands right on the generated method:
+
+```typescript title="schema.d.ts"
+/**
+ * Divide one number by another.
+ *
+ * @param a The numerator.
+ * @param b The denominator (must be non-zero).
+ * @returns The quotient of a and b.
+ */
+divide(a: number, b: number): Promise<number>;
+```
+
+So when you hover `client.divide` in your editor, or type its arguments, you get the full documentation, pulled straight from the backend. Just like the types, it is not duplicated, and therefore will not drift.
+
+The best part is, you can write your backend code once (with types, documentation, etc.) all in one place, generate the schema JSON, and hand it off to 3rd party clients. They can then use the client to automatically generate a typed client for their language, with explanations and documentation **baked-in**, while never seeing a single line of your backend's code (unless you count comments as code 😉).

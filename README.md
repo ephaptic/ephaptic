@@ -43,7 +43,7 @@ What are you waiting for? **Let's go.**
 <details>
     <summary>Python</summary>
     
-```
+```shell
 $ pip install ephaptic
 ```
 
@@ -80,7 +80,7 @@ async def add(num1: int, num2: int) -> int:
 
 Yep, it's really that simple.
 
-But what if your code throws an error? No sweat, it just throws up on the frontend, with the error name.
+But what if your code throws an error? No sweat — it surfaces on the frontend as a typed error you can `catch`. Raise a `ServiceError` for structured, typed errors (carrying a `code`, `message`, and `data`), or let ephaptic turn unexpected exceptions into a safe, generic error (details stay on the server unless you opt into debug mode). See the [error handling docs](https://ephaptic.github.io/ephaptic/tutorial/errors).
 
 And, want to say something to the frontend?
 
@@ -92,12 +92,16 @@ class Notification(BaseModel):
 await ephaptic.to(user1, user2).emit(Notification(message="Hello, world!", priority="high"))
 ```
 
-To create a schema of your RPC endpoints:
+To create a schema of your RPC endpoints (pass `--watch` to auto-regenerate on file changes):
 
+```shell
+$ ephaptic generate src.app:ephaptic -o schema.json
 ```
-$ ephaptic generate src.app:app -o schema.json # --watch to run in background and auto-reload on file change.
-$ # Or:
-$ ephaptic generate src.app:app -o ephaptic.d.ts # converts directly to typescript
+
+Or output TypeScript directly, skipping the JSON layer:
+
+```shell
+$ ephaptic generate src.app:ephaptic -o ephaptic.d.ts
 ```
 
 Pydantic is entirely supported. It's validated for arguments, it's auto-serialized when you return a pydantic model, and your models receive type definitions in the schema.
@@ -124,7 +128,7 @@ From here, you can use <code>ephaptic.active_user()</code> within any exposed fu
 
 <h4>To use with a framework / Vite:</h4>
 
-```
+```shell
 $ npm install @ephaptic/client
 ```
 
@@ -152,17 +156,17 @@ You can even send auth objects to the server for identity loading.
 const client = connect({ url: '...', auth: { token: window.localStorage.getItem('jwtToken') } })
 ```
 
-And you can load types, too.
+And you can load types, too (pass `--watch` to auto-reload on changes):
 
-```
-$ ephaptic from-schema ./schema.json -o schema.d.ts # --watch to auto-reload upon changes
+```shell
+$ ephaptic generate ./schema.json -o schema.d.ts
 ```
 
 ```typescript
 import { connect } from "@ephaptic/client";
 import { type EphapticService } from './schema';
 
-const client = connect(...) as unknown as EphapticService;
+const client = connect(...) as EphapticService;
 ```
 
 
@@ -180,6 +184,10 @@ const client = connect(...);
 
 See more in the [docs](https://ephaptic.github.io/ephaptic/tutorial).
 
+## Conformance
+
+Ephaptic's wire protocol is specified in [`specs/SERVER.md`](https://github.com/ephaptic/ephaptic/blob/main/specs/SERVER.md) and [`specs/CLIENT.md`](https://github.com/ephaptic/ephaptic/blob/main/specs/CLIENT.md). Each package ships a `CONFORMANCE.md` recording exactly which requirements it satisfies, which it does not, and why.
+
 ## [License](https://github.com/ephaptic/ephaptic/blob/main/LICENSE)
 
 [MIT](https://github.com/ephaptic/ephaptic/blob/main/LICENSE)
@@ -187,5 +195,5 @@ See more in the [docs](https://ephaptic.github.io/ephaptic/tutorial).
 ---
 
 <p align="center">
-    &copy; ephaptic 2025
+    &copy; ephaptic 2025 &middot; I read <a href="https://justfuckingusestandards.com/">this</a> and now I don't know if Ephaptic is worth it anymore. Who cares.
 </p>

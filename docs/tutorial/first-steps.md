@@ -6,24 +6,21 @@ We'll create a function on the backend that adds two numbers together, and then 
 
 ## The Backend
 
-Let's create the FastAPI backend.
+Let's create the FastAPI backend. We'll use [uv](https://docs.astral.sh/uv/) to manage the project and its dependencies.
 
 Run this in your project directory:
 
-<div class="termy">
-
 ```console
-$ mkdir -p backend/src
-$ echo "ephaptic" > backend/requirements.txt
-$ echo "fastapi[standard]" >> backend/requirements.txt
-$ python -m venv backend/.venv
-$ source backend/.venv/bin/activate
-$ pip install -r backend/requirements.txt
+$ uv init backend
+$ cd backend
+$ uv add ephaptic "fastapi[standard]"
+$ mkdir -p src
 ```
 
 Now, create `backend/src/app.py` in your favourite editor.
 
-</div>
+!!! tip
+    Don't have `uv`? Install it with `curl -LsSf https://astral.sh/uv/install.sh | sh`. Prefer `pip`? Create a virtual environment inside `backend/` and `pip install ephaptic "fastapi[standard]"`, then run the commands below without `uv run`.
 
 ```python title="backend/src/app.py"
 from fastapi import FastAPI
@@ -42,28 +39,35 @@ That's *literally* it. No routes, no REST methods, no JSON parsing, no boilerpla
 
 ## Generate the Schema
 
-Now, we need to tell the frontend about our new code. Run this in your terminal:
-
-<div class="termy">
+The backend defines the API, so the schema must generate with that as its reference. From the `backend` directory, run this:
 
 ```console
-$ ephaptic generate backend.src.app:ephaptic -o schema.json --watch # You can also output directly as .d.ts, skipping the JSON schema layer.
-
-Watching for changes (/home/user/ephaptic-demo/)...
-Attempting to import `ephaptic` from `backend.src.app` ...
-Found 1 functions.
-  - add
+$ uv run ephaptic generate src.app:ephaptic -o schema.json --watch
+Watching for changes (/home/user/ephaptic-demo/backend)...
+Attempting to import `ephaptic` from `src.app`...
+Functions
+- async def add(a: int, b: int) -> int
 Schema generated to `schema.json`.
-
 ```
 
-</div>
+Or see it rendered in colour:
+
+<code>
+<span>$ uv run ephaptic generate src.app:ephaptic -o schema.json --watch</span><br/>
+<span>Watching for changes (/home/user/ephaptic-demo/backend)...</span><br/>
+<span>Attempting to import `ephaptic` from `src.app`...</span><br/>
+<span><b style="color: #3b8eea">Functions</b></span><br/>
+<span>&nbsp;&nbsp;<span style="color: #8a8a8a">-</span> <span style="color: #c586c0">async </span><span style="color: #3b8eea">def </span><span style="color: #dcdcaa">add</span>(<span style="color: #4fc1ff">a</span>: <span style="color: #4ec9b0">int</span>, <span style="color: #4fc1ff">b</span>: <span style="color: #4ec9b0">int</span>) -> <span style="color: #4ec9b0">int</span></span><br/>
+<span><span style="color: #23d18b">Schema generated to `schema.json`.</span></span>
+</code>
+
+You can also point `-o` at a `.d.ts` file to skip the JSON layer entirely.
 
 For more info about the CLI, head to [The CLI](../advanced/cli.md).
 
 ## The Frontend
 
-Now, let's build the frontend app that will run this.
+Now, let's build the frontend app that will run this. Open a **new terminal** at your project root (leave the schema watcher running in the backend one).
 
 !!! tip
     ephaptic is framework independent. You don't have to use React or Svelte - any framework/library will work!
@@ -78,8 +82,6 @@ Now, let's build the frontend app that will run this.
     Just be aware that if you opt for native browser JS, you won't receive type support (JavaScript does not support types.)
 
 === "React"
-
-    <div class="termy">
 
     ```console
     $ npm create vite@latest frontend
@@ -132,11 +134,7 @@ Now, let's build the frontend app that will run this.
     $ npm i @ephaptic/client
     ```
 
-    </div>
-
 === "Svelte"
-
-    <div class="termy">
 
     ```console
     $ mkdir frontend
@@ -187,34 +185,22 @@ Now, let's build the frontend app that will run this.
     $ npm i @ephaptic/client
     ```
 
-    </div>
 
-
-We'll generate the TypeScript definitions and then use them.
+We'll generate the TypeScript definitions from that schema. Since ephaptic lives in the backend, run this from your `backend` directory (add `--watch` to keep them in sync as you code):
 
 === "React"
 
-    <div class="termy">
-
     ```console
-    $ ephaptic from-schema ../schema.json -o ./src/schema.d.ts
-    Watching for changes (../schema.json)...
-    Schema generated to `./src/schema.d.ts`.
+    $ uv run ephaptic generate schema.json -o ../frontend/src/schema.d.ts
+    Schema generated to `../frontend/src/schema.d.ts`.
     ```
-
-    </div>
 
 === "Svelte"
 
-    <div class="termy">
-
     ```console
-    $ ephaptic from-schema ../schema.json -o ./src/lib/schema.d.ts
-    Watching for changes (../schema.json)...
-    Schema generated to `./src/lib/schema.d.ts`.
+    $ uv run ephaptic generate schema.json -o ../frontend/src/lib/schema.d.ts
+    Schema generated to `../frontend/src/lib/schema.d.ts`.
     ```
-
-    </div>
 
 Now, we can finally use the client.
 
@@ -227,7 +213,7 @@ Now, we can finally use the client.
 
     const client = connect({
         url: "ws://localhost:8000/_ephaptic"
-    }) as unknown as EphapticService;
+    }) as EphapticService;
 
     function App() {
         useEffect(() => {
@@ -257,7 +243,7 @@ Now, we can finally use the client.
 
         const client = connect({
             url: "ws://localhost:8000/_ephaptic"
-        }) as unknown as EphapticService;
+        }) as EphapticService;
 
         onMount(async () => {
             const num1 = 2;
@@ -271,6 +257,8 @@ Now, we can finally use the client.
 
     <h1>Check the console!</h1>
     ```
+
+
 !!! info "Going to Production?"
     In development, we hardcoded `ws://localhost:8000` because the frontend (port 5173) and backend (port 8000) are separate.
 
@@ -283,6 +271,8 @@ Now, we can finally use the client.
 
     Alternatively, if your backend and your frontend are on different hosts, you can specify it: `connect({ url: 'wss://my-backend.app/_ephaptic' })`.
 
+    Remember you should also tell Ephaptic which headers that the proxy sends the connecting IP address behind, to ensure that ratelimiting works properly.
+
     Learn more in the [Deployment](../advanced/deployment.md) section.
 
 !!! tip
@@ -291,15 +281,13 @@ Now, we can finally use the client.
 
 ## Run the app
 
-Now that we've added all the code, let's fire everything up! You'll need to have two terminals open to run these commands.
+Now that we've added all the code, let's fire everything up! You'll need two terminals - one for the backend, one for the frontend.
 
-<div class="termy">
+From your `backend` directory:
 
 ```console
-$ # Make sure you are in the .venv
-$ source backend/.venv/bin/activate
-$ uvicorn backend.src.app:app --reload --port 8000
-INFO:     Will watch for changes in these directories: ['/home/user/ephaptic-demo']
+$ uv run uvicorn src.app:app --reload --port 8000
+INFO:     Will watch for changes in these directories: ['/home/user/ephaptic-demo/backend']
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 INFO:     Started reloader process [1] using WatchFiles
 INFO:     Started server process [2]
@@ -307,9 +295,7 @@ INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 ```
 
-</div>
-
-<div class="termy">
+And from your project root:
 
 ```console
 $ cd frontend
@@ -326,8 +312,6 @@ $ npm run dev
   ➜  Network: use --host to expose
   ➜  press h + enter to show help
 ```
-
-</div>
 
 Now, open [http://localhost:5173](http://localhost:5173) in your browser. Check the console (`F12`). You should see the result of the addition logged!
 
