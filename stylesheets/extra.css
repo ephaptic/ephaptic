@@ -1,0 +1,18 @@
+:root  > * {
+  --md-primary-fg-color:        #9acb48;
+  --md-primary-fg-color--light: #aed966;
+  --md-primary-fg-color--dark:  #86b33e;
+
+  --md-primary-bg-color:        #222222;
+  --md-primary-bg-color--light: #2e2e2e;
+  --md-primary-bg-color--dark:  #131313;
+
+  /* --md-accent-fg-color:                #222222; */
+  /* --md-accent-fg-color--transparent:   #222222; */
+  /* --md-accent-bg-color:                #222222; */
+  /* --md-accent-bg-color--light:         #222222; */
+}
+
+h5 {
+    text-transform: none !important;
+}
