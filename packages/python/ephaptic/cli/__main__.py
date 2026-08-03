@@ -696,7 +696,12 @@ def generate(
 click = typer.main.get_command(app)
 
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context):
+def main(ctx: typer.Context, version: bool = typer.Option(False, "--version", help="Show version and exit")):
+    if version:
+        from importlib.metadata import version as pkg_version
+        typer.echo(pkg_version(__package__.split('.')[0]))
+        raise typer.Exit()
+
     if ctx.invoked_subcommand is None:
         ctx.invoke(generate)
 
